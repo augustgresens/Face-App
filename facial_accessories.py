@@ -27,7 +27,7 @@ def add_mustache(frame, upper_lip_pts, bottom_of_nose_y, top_of_mouth_y, mustach
         bottom_of_nose_y + (mustache_height - mustache_resized.shape[0]) / 2
     )
 
-    # Adds the mustache to the frame
+    # Blends the mustache to the frame
     for c in range(3):
         frame[
             mustache_y : mustache_y + mustache_resized.shape[0],
@@ -48,7 +48,6 @@ def add_sunglasses(frame, forehead_pts, left_eye_pts, right_eye_pts, sunglasses)
     if len(forehead_pts) < 9 or len(left_eye_pts) < 4 or len(right_eye_pts) < 3:
         return frame
 
-    # Existing functionality for calculating sunglasses dimensions and placement
     sunglasses_width = forehead_pts[8][0] - forehead_pts[0][0]
     sunglasses_height = max(
         left_eye_pts[3][1] - forehead_pts[2][1],
@@ -67,7 +66,7 @@ def add_sunglasses(frame, forehead_pts, left_eye_pts, right_eye_pts, sunglasses)
         + (sunglasses_height - sunglasses_resized.shape[0]) / 2
     )
 
-    # Overlay sunglasses onto frame
+    # Blends sunglasses onto frame
     for c in range(3):
         frame[
             sunglasses_y : sunglasses_y + sunglasses_resized.shape[0],
