@@ -7,166 +7,170 @@ from facial_accessories import add_mustache, add_sunglasses
 from pose_estimation import estimate_pose
 from draw_axes import draw_axes
 
-# Define global variables for landmarks and a flag to draw axes
-forehead_pts = []
-upper_lip_pts = []
-left_eye_pts = []
-right_eye_pts = []
-nose_pts = []
-mouth_pts = []
-bottom_of_nose_y = 0
-top_of_mouth_y = 0
-draw_axes_flag = False
-draw_sunglasses_flag = False
-draw_mustache_flag = False
 
+class FaceApp:
+    def __init__(self):
+        self.detector = dlib.get_frontal_face_detector()
+        self.predictor = dlib.shape_predictor(
+            "files/shape_predictor_68_face_landmarks.dat"
+        )
+        self.cap = cv2.VideoCapture(0)
 
-def show_frame():
-    global forehead_pts, upper_lip_pts, left_eye_pts, right_eye_pts, nose_pts, mouth_pts, bottom_of_nose_y, top_of_mouth_y, draw_axes_flag
-    ret, frame = cap.read()
-    if not ret:
-        print("Failed to capture frame")
-        root.quit()
-        return
+        self.mustache = cv2.imread("img/mustache.png", cv2.IMREAD_UNCHANGED)
+        self.sunglasses = cv2.imread("img/sunglasses.png", cv2.IMREAD_UNCHANGED)
 
-    grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    faces = detector(grayscale)
+        self.forehead_pts = []
+        self.upper_lip_pts = []
+        self.left_eye_pts = []
+        self.right_eye_pts = []
+        self.nose_pts = []
+        self.mouth_pts = []
+        self.bottom_of_nose_y = 0
+        self.top_of_mouth_y = 0
 
-    # Camera internals
-    size = frame.shape
-    focal_length = size[1]
-    center = (size[1] // 2, size[0] // 2)
-    camera_matrix = np.array(
-        [[focal_length, 0, center[0]], [0, focal_length, center[1]], [0, 0, 1]],
-        dtype="double",
-    )
-    dist_coeffs = np.zeros((4, 1))  # Assuming no lens distortion
+        self.draw_axes_flag = False
+        self.draw_sunglasses_flag = False
+        self.draw_mustache_flag = False
 
-    success, rotation_vector, translation_vector, landmarks = estimate_pose(
-        frame, detector, predictor, camera_matrix, dist_coeffs
-    )
+        self.root = tk.Tk()
+        self.root.bind("<Escape>", lambda e: self.root.quit())
+        self.lmain = tk.Label(self.root)
+        self.lmain.pack()
 
-    if success:
-        if draw_axes_flag:
-            frame = draw_axes(
-                frame, rotation_vector, translation_vector, camera_matrix, dist_coeffs
-            )
+        self.setup_ui()
+        self.show_frame()
+        self.root.mainloop()
 
-        # forehead landmarks (17 to 26)
-        forehead_pts = [
-            (landmarks.part(i).x, landmarks.part(i).y) for i in range(17, 27)
-        ]
+    def toggle_draw_axes(self):
+        self.draw_axes_flag = not self.draw_axes_flag
 
-        # upper lip landmarks (48 to 59)
-        upper_lip_pts = [
-            (landmarks.part(i).x, landmarks.part(i).y) for i in range(48, 60)
-        ]
+    def toggle_sunglasses(self):
+        self.draw_sunglasses_flag = not self.draw_sunglasses_flag
 
-        # left eye landmarks (36 to 41)
-        left_eye_pts = [
-            (landmarks.part(i).x, landmarks.part(i).y) for i in range(36, 42)
-        ]
+    def toggle_mustache(self):
+        self.draw_mustache_flag = not self.draw_mustache_flag
 
-        # right eye landmarks (42 to 47)
-        right_eye_pts = [
-            (landmarks.part(i).x, landmarks.part(i).y) for i in range(42, 48)
-        ]
-
-        # nose landmarks (27 to 34)
-        nose_pts = [(landmarks.part(i).x, landmarks.part(i).y) for i in range(27, 36)]
-
-        # mouth landmarks (60 to 67)
-        mouth_pts = [(landmarks.part(i).x, landmarks.part(i).y) for i in range(60, 68)]
-
-        # calculate the lowest y-value nose landmark
-        bottom_of_nose_y = max(nose_pts[6][1], nose_pts[7][1])
-
-        # calculate the highest y-value mouth landmark
-        top_of_mouth_y = min(
-            mouth_pts[1][1], mouth_pts[2][1], mouth_pts[3][1], mouth_pts[4][1]
+    def clear_decorations(self):
+        self.draw_axes_flag = self.draw_sunglasses_flag = self.draw_mustache_flag = (
+            False
         )
 
-        # creates top-left point on the nose rectangle
-        top_left_nose = (nose_pts[4][0], nose_pts[0][1])
+    def setup_ui(self):
+        button_frame = tk.Frame(self.root)
+        button_frame.pack(side=tk.BOTTOM, fill=tk.X)
 
-        if draw_sunglasses_flag:
-            frame = add_sunglasses(
-                frame, forehead_pts, left_eye_pts, right_eye_pts, sunglasses
-            )
+        draw_axes_button = tk.Button(
+            button_frame, text="Toggle Axes", command=self.toggle_draw_axes
+        )
+        draw_axes_button.pack(side=tk.LEFT)
 
-        if draw_mustache_flag:
-            frame = add_mustache(
-                frame, upper_lip_pts, bottom_of_nose_y, top_of_mouth_y, mustache
-            )
+        draw_sunglasses_button = tk.Button(
+            button_frame, text="Toggle Sunglasses", command=self.toggle_sunglasses
+        )
+        draw_sunglasses_button.pack(side=tk.LEFT)
 
-    # Convert to PIL Image
-    cv_img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    img = Image.fromarray(cv_img)
-    imgtk = ImageTk.PhotoImage(image=img)
-    lmain.imgtk = imgtk
-    lmain.configure(image=imgtk)
-    lmain.after(10, show_frame)
+        draw_mustache_button = tk.Button(
+            button_frame, text="Toggle Mustache", command=self.toggle_mustache
+        )
+        draw_mustache_button.pack(side=tk.LEFT)
+
+        clear_axes_button = tk.Button(
+            button_frame, text="Clear", command=self.clear_decorations
+        )
+        clear_axes_button.pack(side=tk.LEFT)
+
+    def show_frame(self):
+        ret, frame = self.cap.read()
+        if not ret:
+            print("Failed to capture frame")
+            self.root.quit()
+            return
+
+        grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = self.detector(grayscale)
+
+        # Camera internals
+        size = frame.shape
+        focal_length = size[1]
+        center = (size[1] // 2, size[0] // 2)
+        camera_matrix = np.array(
+            [[focal_length, 0, center[0]], [0, focal_length, center[1]], [0, 0, 1]],
+            dtype="double",
+        )
+        dist_coeffs = np.zeros((4, 1))  # Assuming no lens distortion
+
+        success, rotation_vector, translation_vector, landmarks = estimate_pose(
+            frame, self.detector, self.predictor, camera_matrix, dist_coeffs
+        )
+
+        if success:
+            if self.draw_axes_flag:
+                frame = draw_axes(
+                    frame,
+                    rotation_vector,
+                    translation_vector,
+                    camera_matrix,
+                    dist_coeffs,
+                )
+
+            if landmarks:
+                # Define additional processing here for decorations based on landmarks
+                self.process_landmarks(landmarks)
+
+            if self.draw_sunglasses_flag:
+                frame = add_sunglasses(
+                    frame,
+                    self.forehead_pts,
+                    self.left_eye_pts,
+                    self.right_eye_pts,
+                    self.sunglasses,
+                )
+
+            if self.draw_mustache_flag:
+                frame = add_mustache(
+                    frame,
+                    self.upper_lip_pts,
+                    self.bottom_of_nose_y,
+                    self.top_of_mouth_y,
+                    self.mustache,
+                )
+
+        # Convert to PIL Image
+        cv_img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        img = Image.fromarray(cv_img)
+        imgtk = ImageTk.PhotoImage(image=img)
+        self.lmain.imgtk = imgtk
+        self.lmain.configure(image=imgtk)
+        self.lmain.after(10, self.show_frame)
+
+    def process_landmarks(self, landmarks):
+        # Update landmark-based measurements and points for decorations
+        self.forehead_pts = [
+            (landmarks.part(i).x, landmarks.part(i).y) for i in range(17, 27)
+        ]
+        self.upper_lip_pts = [
+            (landmarks.part(i).x, landmarks.part(i).y) for i in range(48, 60)
+        ]
+        self.left_eye_pts = [
+            (landmarks.part(i).x, landmarks.part(i).y) for i in range(36, 42)
+        ]
+        self.right_eye_pts = [
+            (landmarks.part(i).x, landmarks.part(i).y) for i in range(42, 48)
+        ]
+        self.nose_pts = [
+            (landmarks.part(i).x, landmarks.part(i).y) for i in range(27, 36)
+        ]
+        self.mouth_pts = [
+            (landmarks.part(i).x, landmarks.part(i).y) for i in range(60, 68)
+        ]
+        self.bottom_of_nose_y = max(self.nose_pts[6][1], self.nose_pts[7][1])
+        self.top_of_mouth_y = min(
+            self.mouth_pts[1][1],
+            self.mouth_pts[2][1],
+            self.mouth_pts[3][1],
+            self.mouth_pts[4][1],
+        )
 
 
-detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor("files/shape_predictor_68_face_landmarks.dat")
-
-cap = cv2.VideoCapture(0)
-
-mustache = cv2.imread("img/mustache.png", cv2.IMREAD_UNCHANGED)
-sunglasses = cv2.imread("img/sunglasses.png", cv2.IMREAD_UNCHANGED)
-
-# Setup GUI
-root = tk.Tk()
-root.bind("<Escape>", lambda e: root.quit())
-lmain = tk.Label(root)
-lmain.pack()
-
-
-def toggle_draw_axes():
-    global draw_axes_flag
-    draw_axes_flag = not draw_axes_flag
-
-
-def toggle_sunglasses():
-    global draw_sunglasses_flag
-    draw_sunglasses_flag = not draw_sunglasses_flag
-
-
-def toggle_mustache():
-    global draw_mustache_flag
-    draw_mustache_flag = not draw_mustache_flag
-
-
-def clear_decorations():
-    global draw_axes_flag, draw_sunglasses_flag, draw_mustache_flag
-    draw_axes_flag = draw_sunglasses_flag = draw_mustache_flag = False
-
-
-# Setup GUI components (buttons for toggling axes drawing)
-button_frame = tk.Frame(root)
-button_frame.pack(side=tk.BOTTOM, fill=tk.X)
-
-draw_axes_button = tk.Button(button_frame, text="Toggle Axes", command=toggle_draw_axes)
-draw_axes_button.pack(side=tk.LEFT)
-
-draw_sunglasses_button = tk.Button(
-    button_frame, text="Toggle Sunglasses", command=toggle_sunglasses
-)
-draw_sunglasses_button.pack(side=tk.LEFT)
-
-draw_mustache_button = tk.Button(
-    button_frame, text="Toggle Mustache", command=toggle_mustache
-)
-draw_mustache_button.pack(side=tk.LEFT)
-
-clear_axes_button = tk.Button(button_frame, text="Clear", command=clear_decorations)
-clear_axes_button.pack(side=tk.LEFT)
-
-# Start showing the frame
-show_frame()
-root.mainloop()
-
-# Release the capture
-cap.release()
-cv2.destroyAllWindows()
+if __name__ == "__main__":
+    app = FaceApp()
