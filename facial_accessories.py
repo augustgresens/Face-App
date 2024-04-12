@@ -12,9 +12,8 @@ def add_mustache(frame, upper_lip_pts, bottom_of_nose_y, top_of_mouth_y, mustach
 
     # Check if there are enough points in upper_lip_pts
     if len(upper_lip_pts) < 7:
-        return frame  # Return the frame unmodified if there are not enough points
+        return frame
 
-    # Existing functionality to calculate mustache dimensions and placement
     mustache_width = upper_lip_pts[6][0] - upper_lip_pts[0][0]
     mustache_height = top_of_mouth_y - bottom_of_nose_y
 
@@ -54,7 +53,6 @@ def add_sunglasses(frame, forehead_pts, left_eye_pts, right_eye_pts, sunglasses)
         right_eye_pts[2][1] - forehead_pts[2][1],
     )
 
-    # Continue with resizing and placing sunglasses
     sunglasses_resized = cv2.resize(
         sunglasses, (int(sunglasses_width), int(sunglasses_height))
     )
