@@ -1,8 +1,8 @@
-import tkinter as tk
-from PIL import Image, ImageTk
 import cv2
-import dlib
 import numpy as np
+import tkinter as tk
+import dlib
+from gui import GUI
 from facial_accessories import add_mustache, add_sunglasses
 from pose_estimation import estimate_pose
 from draw_axes import draw_axes
@@ -17,79 +17,39 @@ class FaceApp:
         self.cap = cv2.VideoCapture(0)
 
         self.mustache = cv2.imread("img/mustache.png", cv2.IMREAD_UNCHANGED)
+        if self.mustache is None:
+            raise FileNotFoundError("Mustache image not found.")
+
         self.sunglasses = cv2.imread("img/sunglasses.png", cv2.IMREAD_UNCHANGED)
+        if self.sunglasses is None:
+            raise FileNotFoundError("Sunglasses image not found.")
 
-        self.forehead_pts = []
-        self.upper_lip_pts = []
-        self.left_eye_pts = []
-        self.right_eye_pts = []
-        self.nose_pts = []
-        self.mouth_pts = []
-        self.bottom_of_nose_y = 0
-        self.top_of_mouth_y = 0
-
-        self.draw_axes_flag = False
-        self.draw_sunglasses_flag = False
-        self.draw_mustache_flag = False
+        self.flags = {"axes": False, "sunglasses": False, "mustache": False}
 
         self.root = tk.Tk()
         self.root.bind("<Escape>", lambda e: self.root.quit())
-        self.lmain = tk.Label(self.root)
-        self.lmain.pack()
+        self.gui = GUI(self.root, self.update_flags)
 
-        self.setup_ui()
         self.show_frame()
         self.root.mainloop()
 
-    def toggle_draw_axes(self):
-        self.draw_axes_flag = not self.draw_axes_flag
+    def setup_camera(self):
+        detector = dlib.get_frontal_face_detector()
+        predictor = dlib.shape_predictor("files/shape_predictor_68_face_landmarks.dat")
+        cap = cv2.VideoCapture(0)
+        return detector, predictor, cap
 
-    def toggle_sunglasses(self):
-        self.draw_sunglasses_flag = not self.draw_sunglasses_flag
+    def update_flags(self, flag):
+        if flag == "clear":
+            for key in self.flags:
+                self.flags[key] = False
+        else:
+            self.flags[flag] = not self.flags[flag]
 
-    def toggle_mustache(self):
-        self.draw_mustache_flag = not self.draw_mustache_flag
-
-    def clear_decorations(self):
-        self.draw_axes_flag = self.draw_sunglasses_flag = self.draw_mustache_flag = (
-            False
-        )
-
-    def setup_ui(self):
-        button_frame = tk.Frame(self.root)
-        button_frame.pack(side=tk.BOTTOM, fill=tk.X)
-
-        draw_axes_button = tk.Button(
-            button_frame, text="Toggle Axes", command=self.toggle_draw_axes
-        )
-        draw_axes_button.pack(side=tk.LEFT)
-
-        draw_sunglasses_button = tk.Button(
-            button_frame, text="Toggle Sunglasses", command=self.toggle_sunglasses
-        )
-        draw_sunglasses_button.pack(side=tk.LEFT)
-
-        draw_mustache_button = tk.Button(
-            button_frame, text="Toggle Mustache", command=self.toggle_mustache
-        )
-        draw_mustache_button.pack(side=tk.LEFT)
-
-        clear_axes_button = tk.Button(
-            button_frame, text="Clear", command=self.clear_decorations
-        )
-        clear_axes_button.pack(side=tk.LEFT)
-
-    def show_frame(self):
-        ret, frame = self.cap.read()
-        if not ret:
-            print("Failed to capture frame")
-            self.root.quit()
-            return
-
+    def process_frame(self, frame):
         grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         faces = self.detector(grayscale)
 
-        # Camera internals
         size = frame.shape
         focal_length = size[1]
         center = (size[1] // 2, size[0] // 2)
@@ -97,14 +57,14 @@ class FaceApp:
             [[focal_length, 0, center[0]], [0, focal_length, center[1]], [0, 0, 1]],
             dtype="double",
         )
-        dist_coeffs = np.zeros((4, 1))  # Assuming no lens distortion
+        dist_coeffs = np.zeros((4, 1))
 
         success, rotation_vector, translation_vector, landmarks = estimate_pose(
             frame, self.detector, self.predictor, camera_matrix, dist_coeffs
         )
 
         if success:
-            if self.draw_axes_flag:
+            if self.flags["axes"]:
                 frame = draw_axes(
                     frame,
                     rotation_vector,
@@ -114,10 +74,9 @@ class FaceApp:
                 )
 
             if landmarks:
-                # Define additional processing here for decorations based on landmarks
                 self.process_landmarks(landmarks)
 
-            if self.draw_sunglasses_flag:
+            if self.flags["sunglasses"]:
                 frame = add_sunglasses(
                     frame,
                     self.forehead_pts,
@@ -126,7 +85,7 @@ class FaceApp:
                     self.sunglasses,
                 )
 
-            if self.draw_mustache_flag:
+            if self.flags["mustache"]:
                 frame = add_mustache(
                     frame,
                     self.upper_lip_pts,
@@ -135,16 +94,20 @@ class FaceApp:
                     self.mustache,
                 )
 
-        # Convert to PIL Image
-        cv_img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        img = Image.fromarray(cv_img)
-        imgtk = ImageTk.PhotoImage(image=img)
-        self.lmain.imgtk = imgtk
-        self.lmain.configure(image=imgtk)
-        self.lmain.after(10, self.show_frame)
+        return frame
+
+    def show_frame(self):
+        ret, frame = self.cap.read()
+        if not ret:
+            print("Failed to capture frame")
+            self.root.quit()
+            return
+
+        frame = self.process_frame(frame)
+        self.gui.update_image(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        self.root.after(10, self.show_frame)
 
     def process_landmarks(self, landmarks):
-        # Update landmark-based measurements and points for decorations
         self.forehead_pts = [
             (landmarks.part(i).x, landmarks.part(i).y) for i in range(17, 27)
         ]
