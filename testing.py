@@ -23,17 +23,16 @@ class TestFacialFilters(unittest.TestCase):
         self.mock_predictor = MagicMock()
 
     def test_with_null_image_input(self):
-        """Verify that add_mustache and add_sunglasses return None or do not crash when the input image is None."""
         result_frame_mustache = add_mustache(None, [], 0, 0, self.mustache)
         result_frame_sunglasses = add_sunglasses(None, [], [], [], self.sunglasses)
 
         self.assertIsNone(
             result_frame_mustache,
-            "Function should return None or an error when input image is None for add_mustache.",
+            "Function should return None or an error when add_mustache is given a null image.",
         )
         self.assertIsNone(
             result_frame_sunglasses,
-            "Function should return None or an error when input image is None for add_sunglasses.",
+            "Function should return None or an error when add_sunglasses is given a null image.",
         )
 
     # Verifies that the estimate_pose function returns 'None' when no faces are detected
