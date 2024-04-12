@@ -1,0 +1,43 @@
+import cv2
+import numpy as np
+
+
+def estimate_pose(frame, detector, predictor, camera_matrix, dist_coeffs):
+    grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    faces = detector(grayscale)
+    for face in faces:
+        landmarks = predictor(grayscale, face)
+        model_points = np.array(
+            [
+                (0.0, 0.0, 0.0),  # Nose tip
+                (0.0, -330.0, -65.0),  # Chin
+                (-225.0, 170.0, -135.0),  # Left eye left corner
+                (225.0, 170.0, -135.0),  # Right eye right corner
+                (-150.0, -150.0, -125.0),  # Left Mouth corner
+                (150.0, -150.0, -125.0),  # Right mouth corner
+            ],
+            dtype="double",
+        )
+
+        image_points = np.array(
+            [
+                (landmarks.part(30).x, landmarks.part(30).y),  # Nose tip
+                (landmarks.part(8).x, landmarks.part(8).y),  # Chin
+                (landmarks.part(36).x, landmarks.part(36).y),  # Left eye left corner
+                (landmarks.part(45).x, landmarks.part(45).y),  # Right eye right corner
+                (landmarks.part(48).x, landmarks.part(48).y),  # Left Mouth corner
+                (landmarks.part(54).x, landmarks.part(54).y),  # Right mouth corner
+            ],
+            dtype="double",
+        )
+
+        success, rotation_vector, translation_vector = cv2.solvePnP(
+            model_points,
+            image_points,
+            camera_matrix,
+            dist_coeffs,
+            flags=cv2.SOLVEPNP_ITERATIVE,
+        )
+
+        return success, rotation_vector, translation_vector, landmarks
+    return None, None, None, None
