@@ -1,3 +1,4 @@
+# gui.py
 import tkinter as tk
 from PIL import Image, ImageTk
 
@@ -15,31 +16,29 @@ class GUI:
         button_frame = tk.Frame(self.parent)
         button_frame.pack(side=tk.BOTTOM, fill=tk.X)
 
-        draw_axes_button = tk.Button(
+        tk.Button(
             button_frame,
             text="Toggle Axes",
             command=lambda: self.update_callback("axes"),
-        )
-        draw_axes_button.pack(side=tk.LEFT)
-
-        draw_sunglasses_button = tk.Button(
+        ).pack(side=tk.LEFT)
+        tk.Button(
             button_frame,
             text="Toggle Sunglasses",
             command=lambda: self.update_callback("sunglasses"),
-        )
-        draw_sunglasses_button.pack(side=tk.LEFT)
-
-        draw_mustache_button = tk.Button(
+        ).pack(side=tk.LEFT)
+        tk.Button(
             button_frame,
             text="Toggle Mustache",
             command=lambda: self.update_callback("mustache"),
-        )
-        draw_mustache_button.pack(side=tk.LEFT)
-
-        clear_axes_button = tk.Button(
+        ).pack(side=tk.LEFT)
+        tk.Button(
+            button_frame,
+            text="Toggle Overlay",
+            command=lambda: self.update_callback("overlay"),
+        ).pack(side=tk.LEFT)
+        tk.Button(
             button_frame, text="Clear", command=lambda: self.update_callback("clear")
-        )
-        clear_axes_button.pack(side=tk.LEFT)
+        ).pack(side=tk.LEFT)
 
     def update_image(self, image):
         imgtk = ImageTk.PhotoImage(image=Image.fromarray(image))

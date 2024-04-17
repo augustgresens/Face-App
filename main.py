@@ -2,9 +2,7 @@ import cv2
 import tkinter as tk
 import dlib
 from gui import GUI
-from frame_processor import (
-    FrameProcessor,
-)
+from frame_processor import FrameProcessor
 
 
 class FaceApp:
@@ -12,13 +10,11 @@ class FaceApp:
         self.root = tk.Tk()
         self.root.bind("<Escape>", lambda e: self.root.quit())
 
-        # Initialize the detector and predictor
         self.detector = dlib.get_frontal_face_detector()
         self.predictor = dlib.shape_predictor(
             "files/shape_predictor_68_face_landmarks.dat"
         )
 
-        # Load images
         self.sunglasses = cv2.imread("img/sunglasses.png", cv2.IMREAD_UNCHANGED)
         if self.sunglasses is None:
             raise FileNotFoundError("Sunglasses image not found.")
@@ -27,19 +23,29 @@ class FaceApp:
         if self.mustache is None:
             raise FileNotFoundError("Mustache image not found.")
 
-        # Initialize processor
+        self.overlay_img = cv2.imread("img/peacockbass.png", cv2.IMREAD_UNCHANGED)
+        if self.overlay_img is None:
+            raise FileNotFoundError("Overlay image not found.")
+
         self.processor = FrameProcessor(
-            self.detector, self.predictor, self.sunglasses, self.mustache
+            self.detector,
+            self.predictor,
+            self.sunglasses,
+            self.mustache,
+            self.overlay_img,
         )
 
-        # Initialize camera
         self.cap = cv2.VideoCapture(0)
         if not self.cap.isOpened():
             raise Exception("Camera could not be opened.")
 
-        # Initialize GUI
         self.gui = GUI(self.root, self.update_flags)
-        self.flags = {"axes": False, "sunglasses": False, "mustache": False}
+        self.flags = {
+            "axes": False,
+            "sunglasses": False,
+            "mustache": False,
+            "overlay": False,
+        }
 
         self.show_frame()
         self.root.mainloop()
@@ -55,7 +61,7 @@ class FaceApp:
         ret, frame = self.cap.read()
         if not ret:
             print("Failed to capture frame")
-            self.cap.release()  # Properly release the camera
+            self.cap.release()
             self.root.quit()
             return
 

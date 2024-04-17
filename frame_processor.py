@@ -6,12 +6,11 @@ from draw_axes import draw_axes
 
 
 class FrameProcessor:
-    def __init__(self, detector, predictor, sunglasses, mustache):
+    def __init__(self, detector, predictor, sunglasses, mustache, overlay_img):
         self.detector = detector
         self.predictor = predictor
         self.sunglasses = sunglasses
         self.mustache = mustache
-        # Initialize empty lists for facial points that will be updated per frame
         self.forehead_pts = []
         self.upper_lip_pts = []
         self.left_eye_pts = []
@@ -20,6 +19,9 @@ class FrameProcessor:
         self.mouth_pts = []
         self.bottom_of_nose_y = 0
         self.top_of_mouth_y = 0
+        self.overlay_img = overlay_img
+        if self.overlay_img.shape[2] == 3:
+            self.overlay_img = cv2.cvtColor(self.overlay_img, cv2.COLOR_RGB2RGBA)
 
     def process_frame(self, frame, flags):
         grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -47,16 +49,90 @@ class FrameProcessor:
                     camera_matrix,
                     dist_coeffs,
                 )
+
             if landmarks:
                 frame = self.process_landmarks(frame, landmarks, flags)
+
+            if flags["overlay"]:
+                frame = self.apply_overlay(
+                    frame,
+                    rotation_vector,
+                    translation_vector,
+                    camera_matrix,
+                    dist_coeffs,
+                )
+
+        return frame
+
+    def apply_overlay(
+        self, frame, rotation_vector, translation_vector, camera_matrix, dist_coeffs
+    ):
+        angle = np.linalg.norm(rotation_vector) * (180 / np.pi)
+        y_rotation = rotation_vector[1]
+
+        model_points_3d = np.array(
+            [
+                (0.0, 0.0, 0.0),  # Nose tip
+                (-300.0, -300.0, -125.0),  # Left cheek
+                (300.0, -300.0, -125.0),  # Right cheek
+                (0.0, 300.0, -125.0),  # Chin
+            ],
+            dtype="double",
+        )
+
+        image_points_2d, _ = cv2.projectPoints(
+            model_points_3d,
+            rotation_vector,
+            translation_vector,
+            camera_matrix,
+            dist_coeffs,
+        )
+
+        image_points_2d = image_points_2d.reshape(-1, 2).astype(np.float32)
+
+        width_factor = max(0.5, 1 - abs(y_rotation) / 2)
+        half_width = int(self.overlay_img.shape[1] / 2 * width_factor)
+        half_height = int(self.overlay_img.shape[0] / 2)
+
+        overlay_points = np.array(
+            [
+                [self.overlay_img.shape[1] / 2, half_height],
+                [
+                    self.overlay_img.shape[1] / 2 - half_width,
+                    self.overlay_img.shape[0],
+                ],
+                [
+                    self.overlay_img.shape[1] / 2 + half_width,
+                    self.overlay_img.shape[0],
+                ],
+                [self.overlay_img.shape[1] / 2, 0],
+            ],
+            dtype=np.float32,
+        )
+
+        matrix = cv2.getPerspectiveTransform(overlay_points, image_points_2d)
+
+        transformed_overlay = cv2.warpPerspective(
+            self.overlay_img, matrix, (frame.shape[1], frame.shape[0])
+        )
+
+        if transformed_overlay.shape[2] == 3:
+            transformed_overlay = cv2.cvtColor(transformed_overlay, cv2.COLOR_BGR2BGRA)
+
+        alpha_overlay = transformed_overlay[:, :, 3] / 255.0
+        alpha_frame = 1.0 - alpha_overlay
+        overlay_color = transformed_overlay[:, :, :3]
+
+        for c in range(3):
+            frame[:, :, c] = (
+                alpha_overlay * overlay_color[:, :, c] + alpha_frame * frame[:, :, c]
+            )
 
         return frame
 
     def process_landmarks(self, frame, landmarks, flags):
-        # Update facial points based on detected landmarks
         self.update_facial_points(landmarks)
 
-        # Apply accessories if flags are set
         if flags["sunglasses"]:
             frame = add_sunglasses(
                 frame,
