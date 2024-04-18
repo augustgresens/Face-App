@@ -11,17 +11,19 @@ class FrameProcessor:
         self.predictor = predictor
         self.sunglasses = sunglasses
         self.mustache = mustache
-        self.forehead_pts = []
-        self.upper_lip_pts = []
-        self.left_eye_pts = []
-        self.right_eye_pts = []
-        self.nose_pts = []
-        self.mouth_pts = []
-        self.bottom_of_nose_y = 0
-        self.top_of_mouth_y = 0
         self.overlay_img = overlay_img
+
         if self.overlay_img.shape[2] == 3:
             self.overlay_img = cv2.cvtColor(self.overlay_img, cv2.COLOR_RGB2RGBA)
+
+        self.landmark_indices = {
+            "forehead": list(range(17, 27)),
+            "upper_lip": list(range(48, 60)),
+            "left_eye": list(range(36, 42)),
+            "right_eye": list(range(42, 48)),
+            "nose": list(range(27, 36)),
+            "mouth": list(range(60, 68)),
+        }
 
     def process_frame(self, frame, flags):
         grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -154,23 +156,30 @@ class FrameProcessor:
 
     def update_facial_points(self, landmarks):
         self.forehead_pts = [
-            (landmarks.part(i).x, landmarks.part(i).y) for i in range(17, 27)
+            (landmarks.part(i).x, landmarks.part(i).y)
+            for i in self.landmark_indices["forehead"]
         ]
         self.upper_lip_pts = [
-            (landmarks.part(i).x, landmarks.part(i).y) for i in range(48, 60)
+            (landmarks.part(i).x, landmarks.part(i).y)
+            for i in self.landmark_indices["upper_lip"]
         ]
         self.left_eye_pts = [
-            (landmarks.part(i).x, landmarks.part(i).y) for i in range(36, 42)
+            (landmarks.part(i).x, landmarks.part(i).y)
+            for i in self.landmark_indices["left_eye"]
         ]
         self.right_eye_pts = [
-            (landmarks.part(i).x, landmarks.part(i).y) for i in range(42, 48)
+            (landmarks.part(i).x, landmarks.part(i).y)
+            for i in self.landmark_indices["right_eye"]
         ]
         self.nose_pts = [
-            (landmarks.part(i).x, landmarks.part(i).y) for i in range(27, 36)
+            (landmarks.part(i).x, landmarks.part(i).y)
+            for i in self.landmark_indices["nose"]
         ]
         self.mouth_pts = [
-            (landmarks.part(i).x, landmarks.part(i).y) for i in range(60, 68)
+            (landmarks.part(i).x, landmarks.part(i).y)
+            for i in self.landmark_indices["mouth"]
         ]
+
         self.bottom_of_nose_y = max(self.nose_pts[6][1], self.nose_pts[7][1])
         self.top_of_mouth_y = min(
             self.mouth_pts[1][1],
