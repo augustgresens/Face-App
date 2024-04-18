@@ -12,7 +12,7 @@ class FaceApp:
 
         self.detector = dlib.get_frontal_face_detector()
         self.predictor = dlib.shape_predictor(
-            "files/shape_predictor_68_face_landmarks.dat"
+            "data_files/shape_predictor_68_face_landmarks.dat"
         )
 
         self.sunglasses = cv2.imread("img/sunglasses.png", cv2.IMREAD_UNCHANGED)

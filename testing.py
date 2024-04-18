@@ -18,7 +18,6 @@ class TestFacialFilters(unittest.TestCase):
             and self.sunglasses is not None
         ), "Failed to load images"
 
-        # Mock detector and predictor used to simulate no faces detected
         self.mock_detector = MagicMock(return_value=[])
         self.mock_predictor = MagicMock()
 
@@ -35,7 +34,6 @@ class TestFacialFilters(unittest.TestCase):
             "Function should return None or an error when add_sunglasses is given a null image.",
         )
 
-    # Verifies that the estimate_pose function returns 'None' when no faces are detected
     def test_no_faces_detected(self):
         camera_matrix = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype="double")
         dist_coeffs = np.zeros((4, 1), dtype="double")
@@ -52,7 +50,6 @@ class TestFacialFilters(unittest.TestCase):
             "Function should return None for all outputs when no faces are detected",
         )
 
-    # Tests to see if the add_mustache function modifies the frame by checking difference of pixel values
     def test_add_mustache(self):
         upper_lip_pts = [
             (10, 10),

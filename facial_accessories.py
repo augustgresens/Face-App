@@ -3,14 +3,13 @@ import cv2
 import dlib
 
 detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor("files/shape_predictor_68_face_landmarks.dat")
+predictor = dlib.shape_predictor("data_files/shape_predictor_68_face_landmarks.dat")
 
 
 def add_mustache(frame, upper_lip_pts, bottom_of_nose_y, top_of_mouth_y, mustache):
     if frame is None:
         return None
 
-    # Check if there are enough points in upper_lip_pts
     if len(upper_lip_pts) < 7:
         return frame
 
@@ -26,7 +25,6 @@ def add_mustache(frame, upper_lip_pts, bottom_of_nose_y, top_of_mouth_y, mustach
         bottom_of_nose_y + (mustache_height - mustache_resized.shape[0]) / 2
     )
 
-    # Blends the mustache to the frame
     for c in range(3):
         frame[
             mustache_y : mustache_y + mustache_resized.shape[0],
@@ -64,7 +62,6 @@ def add_sunglasses(frame, forehead_pts, left_eye_pts, right_eye_pts, sunglasses)
         + (sunglasses_height - sunglasses_resized.shape[0]) / 2
     )
 
-    # Blends sunglasses onto frame
     for c in range(3):
         frame[
             sunglasses_y : sunglasses_y + sunglasses_resized.shape[0],
