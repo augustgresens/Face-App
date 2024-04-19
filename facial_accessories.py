@@ -6,17 +6,14 @@ def alpha_blend(frame, overlay, position=(0, 0)):
     x, y = position
     overlay_height, overlay_width = overlay.shape[:2]
 
-    # Ensure the overlay fits within the frame dimensions
     x_end = min(x + overlay_width, frame.shape[1])
     y_end = min(y + overlay_height, frame.shape[0])
     x = max(x, 0)
     y = max(y, 0)
 
-    # Extract the region of interest of the frame
     roi = frame[y:y_end, x:x_end]
     overlay = overlay[0 : (y_end - y), 0 : (x_end - x)]
 
-    # Blend overlay and ROI
     alpha_overlay = overlay[:, :, 3] / 255.0
     alpha_frame = 1.0 - alpha_overlay
     for c in range(3):
@@ -37,7 +34,6 @@ def apply_overlay(frame, landmarks, overlay_img, overlay_points, landmark_indice
         overlay_img, matrix, (frame.shape[1], frame.shape[0])
     )
 
-    # Use the alpha_blend function
     return alpha_blend(frame, transformed_overlay)
 
 

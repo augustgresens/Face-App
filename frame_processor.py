@@ -1,7 +1,6 @@
-# Assuming this is part of your main module or where the FrameProcessor class is defined
-from facial_accessories import add_mustache, add_sunglasses, apply_overlay
 import cv2
 import numpy as np
+from facial_accessories import add_mustache, add_sunglasses, apply_overlay
 from pose_estimation import estimate_pose
 from draw_axes import draw_axes
 
@@ -49,75 +48,13 @@ class FrameProcessor:
                     camera_matrix,
                     dist_coeffs,
                 )
-
-            if landmarks:
-                frame = self.process_landmarks(frame, landmarks, flags)
-
-            if flags["overlay"]:
-                frame = apply_overlay(
-                    frame,
-                    landmarks,
-                    self.overlay_img,
-                    np.array(
-                        [
-                            [
-                                self.overlay_img.shape[1] * 0.5,
-                                self.overlay_img.shape[0] * 0.33,
-                            ],
-                            [
-                                self.overlay_img.shape[1] * 0.5,
-                                self.overlay_img.shape[0] * 0.95,
-                            ],
-                            [
-                                self.overlay_img.shape[1] * 0.15,
-                                self.overlay_img.shape[0] * 0.25,
-                            ],
-                            [
-                                self.overlay_img.shape[1] * 0.85,
-                                self.overlay_img.shape[0] * 0.25,
-                            ],
-                            [
-                                self.overlay_img.shape[1] * 0.3,
-                                self.overlay_img.shape[0] * 0.75,
-                            ],
-                            [
-                                self.overlay_img.shape[1] * 0.7,
-                                self.overlay_img.shape[0] * 0.75,
-                            ],
-                            [
-                                self.overlay_img.shape[1] * 0.1,
-                                self.overlay_img.shape[0] * 0.05,
-                            ],
-                            [
-                                self.overlay_img.shape[1] * 0.9,
-                                self.overlay_img.shape[0] * 0.05,
-                            ],
-                            [
-                                self.overlay_img.shape[1] * 0.5,
-                                self.overlay_img.shape[0] * 0.5,
-                            ],
-                        ],
-                        dtype="float32",
-                    ),
-                    [
-                        30,  # Nose tip
-                        8,  # Chin
-                        36,  # Left corner of left eye
-                        45,  # Right corner of right eye
-                        48,  # Left corner of mouth
-                        54,  # Right corner of mouth
-                        17,  # Leftmost of forehead
-                        26,  # Rightmost of forehead
-                        33,  # Bottom of nose
-                    ],
-                )
+            self.update_facial_points(landmarks)
+            frame = self.process_landmarks(frame, landmarks, flags)
 
         return frame
 
     def process_landmarks(self, frame, landmarks, flags):
-        self.update_facial_points(landmarks)
-
-        if flags["sunglasses"]:
+        if flags.get("sunglasses"):
             frame = add_sunglasses(
                 frame,
                 self.forehead_pts,
@@ -125,13 +62,61 @@ class FrameProcessor:
                 self.right_eye_pts,
                 self.sunglasses,
             )
-        if flags["mustache"]:
+        if flags.get("mustache"):
             frame = add_mustache(
                 frame,
                 self.upper_lip_pts,
                 self.bottom_of_nose_y,
                 self.top_of_mouth_y,
                 self.mustache,
+            )
+        if flags.get("overlay"):
+            frame = apply_overlay(
+                frame,
+                landmarks,
+                self.overlay_img,
+                np.array(
+                    [
+                        [
+                            self.overlay_img.shape[1] * 0.5,
+                            self.overlay_img.shape[0] * 0.33,
+                        ],
+                        [
+                            self.overlay_img.shape[1] * 0.5,
+                            self.overlay_img.shape[0] * 0.95,
+                        ],
+                        [
+                            self.overlay_img.shape[1] * 0.15,
+                            self.overlay_img.shape[0] * 0.25,
+                        ],
+                        [
+                            self.overlay_img.shape[1] * 0.85,
+                            self.overlay_img.shape[0] * 0.25,
+                        ],
+                        [
+                            self.overlay_img.shape[1] * 0.3,
+                            self.overlay_img.shape[0] * 0.75,
+                        ],
+                        [
+                            self.overlay_img.shape[1] * 0.7,
+                            self.overlay_img.shape[0] * 0.75,
+                        ],
+                        [
+                            self.overlay_img.shape[1] * 0.1,
+                            self.overlay_img.shape[0] * 0.05,
+                        ],
+                        [
+                            self.overlay_img.shape[1] * 0.9,
+                            self.overlay_img.shape[0] * 0.05,
+                        ],
+                        [
+                            self.overlay_img.shape[1] * 0.5,
+                            self.overlay_img.shape[0] * 0.5,
+                        ],
+                    ],
+                    dtype="float32",
+                ),
+                [30, 8, 36, 45, 48, 54, 17, 26, 33],  # Corresponding indices
             )
 
         return frame
@@ -161,7 +146,6 @@ class FrameProcessor:
             (landmarks.part(i).x, landmarks.part(i).y)
             for i in self.landmark_indices["mouth"]
         ]
-
         self.bottom_of_nose_y = max(self.nose_pts[6][1], self.nose_pts[7][1])
         self.top_of_mouth_y = min(
             self.mouth_pts[1][1],
