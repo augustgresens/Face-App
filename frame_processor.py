@@ -1,6 +1,7 @@
+# Assuming this is part of your main module or where the FrameProcessor class is defined
+from facial_accessories import add_mustache, add_sunglasses, apply_overlay
 import cv2
 import numpy as np
-from facial_accessories import add_mustache, add_sunglasses
 from pose_estimation import estimate_pose
 from draw_axes import draw_axes
 
@@ -26,9 +27,6 @@ class FrameProcessor:
         }
 
     def process_frame(self, frame, flags):
-        grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = self.detector(grayscale)
-
         size = frame.shape
         focal_length = size[1]
         center = (size[1] // 2, size[0] // 2)
@@ -56,79 +54,63 @@ class FrameProcessor:
                 frame = self.process_landmarks(frame, landmarks, flags)
 
             if flags["overlay"]:
-                frame = self.apply_overlay(
+                frame = apply_overlay(
                     frame,
-                    rotation_vector,
-                    translation_vector,
-                    camera_matrix,
-                    dist_coeffs,
+                    landmarks,
+                    self.overlay_img,
+                    np.array(
+                        [
+                            [
+                                self.overlay_img.shape[1] * 0.5,
+                                self.overlay_img.shape[0] * 0.33,
+                            ],
+                            [
+                                self.overlay_img.shape[1] * 0.5,
+                                self.overlay_img.shape[0] * 0.95,
+                            ],
+                            [
+                                self.overlay_img.shape[1] * 0.15,
+                                self.overlay_img.shape[0] * 0.25,
+                            ],
+                            [
+                                self.overlay_img.shape[1] * 0.85,
+                                self.overlay_img.shape[0] * 0.25,
+                            ],
+                            [
+                                self.overlay_img.shape[1] * 0.3,
+                                self.overlay_img.shape[0] * 0.75,
+                            ],
+                            [
+                                self.overlay_img.shape[1] * 0.7,
+                                self.overlay_img.shape[0] * 0.75,
+                            ],
+                            [
+                                self.overlay_img.shape[1] * 0.1,
+                                self.overlay_img.shape[0] * 0.05,
+                            ],
+                            [
+                                self.overlay_img.shape[1] * 0.9,
+                                self.overlay_img.shape[0] * 0.05,
+                            ],
+                            [
+                                self.overlay_img.shape[1] * 0.5,
+                                self.overlay_img.shape[0] * 0.5,
+                            ],
+                        ],
+                        dtype="float32",
+                    ),
+                    [
+                        30,  # Nose tip
+                        8,  # Chin
+                        36,  # Left corner of left eye
+                        45,  # Right corner of right eye
+                        48,  # Left corner of mouth
+                        54,  # Right corner of mouth
+                        17,  # Leftmost of forehead
+                        26,  # Rightmost of forehead
+                        33,  # Bottom of nose
+                    ],
                 )
-
-        return frame
-
-    def apply_overlay(
-        self, frame, rotation_vector, translation_vector, camera_matrix, dist_coeffs
-    ):
-        angle = np.linalg.norm(rotation_vector) * (180 / np.pi)
-        y_rotation = rotation_vector[1]
-
-        model_points_3d = np.array(
-            [
-                (0.0, 0.0, 0.0),  # Nose tip
-                (-300.0, -300.0, -125.0),  # Left cheek
-                (300.0, -300.0, -125.0),  # Right cheek
-                (0.0, 300.0, -125.0),  # Chin
-            ],
-            dtype="double",
-        )
-
-        image_points_2d, _ = cv2.projectPoints(
-            model_points_3d,
-            rotation_vector,
-            translation_vector,
-            camera_matrix,
-            dist_coeffs,
-        )
-
-        image_points_2d = image_points_2d.reshape(-1, 2).astype(np.float32)
-
-        width_factor = max(0.5, 1 - abs(y_rotation) / 2)
-        half_width = int(self.overlay_img.shape[1] / 2 * width_factor)
-        half_height = int(self.overlay_img.shape[0] / 2)
-
-        overlay_points = np.array(
-            [
-                [self.overlay_img.shape[1] / 2, half_height],
-                [
-                    self.overlay_img.shape[1] / 2 - half_width,
-                    self.overlay_img.shape[0],
-                ],
-                [
-                    self.overlay_img.shape[1] / 2 + half_width,
-                    self.overlay_img.shape[0],
-                ],
-                [self.overlay_img.shape[1] / 2, 0],
-            ],
-            dtype=np.float32,
-        )
-
-        matrix = cv2.getPerspectiveTransform(overlay_points, image_points_2d)
-
-        transformed_overlay = cv2.warpPerspective(
-            self.overlay_img, matrix, (frame.shape[1], frame.shape[0])
-        )
-
-        if transformed_overlay.shape[2] == 3:
-            transformed_overlay = cv2.cvtColor(transformed_overlay, cv2.COLOR_BGR2BGRA)
-
-        alpha_overlay = transformed_overlay[:, :, 3] / 255.0
-        alpha_frame = 1.0 - alpha_overlay
-        overlay_color = transformed_overlay[:, :, :3]
-
-        for c in range(3):
-            frame[:, :, c] = (
-                alpha_overlay * overlay_color[:, :, c] + alpha_frame * frame[:, :, c]
-            )
 
         return frame
 
