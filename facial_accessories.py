@@ -51,7 +51,7 @@ def add_mustache(
         mustache, None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_LINEAR
     )
 
-    vertical_offset = -30
+    vertical_offset = -50
 
     mustache_width = resized_mustache.shape[1]
     mustache_height = resized_mustache.shape[0]
@@ -114,13 +114,14 @@ def add_sunglasses(
     rotation_vector,
     translation_vector,
 ):
-    temple_width = np.linalg.norm(
+    # Using eye corners for horizontal scaling and nose bridge for vertical positioning
+    eye_distance = np.linalg.norm(
         [
-            (landmarks.part(16).x - landmarks.part(0).x),
-            (landmarks.part(16).y - landmarks.part(0).y),
+            (landmarks.part(45).x - landmarks.part(36).x),
+            (landmarks.part(45).y - landmarks.part(36).y),
         ]
     )
-    scale_factor = temple_width / sunglasses.shape[1] * 4
+    scale_factor = 1.5
 
     resized_sunglasses = cv2.resize(
         sunglasses,
@@ -130,7 +131,10 @@ def add_sunglasses(
         interpolation=cv2.INTER_LINEAR,
     )
 
-    vertical_offset = landmarks.part(27).y + resized_sunglasses.shape[0] / 10
+    # Positioning the sunglasses at the nose bridge
+    # Adjust the 'y' position to move the sunglasses up or down relative to the nose bridge
+    nose_bridge_y = landmarks.part(28).y
+    vertical_offset = nose_bridge_y + int(resized_sunglasses.shape[0])
 
     sunglasses_width = resized_sunglasses.shape[1]
     sunglasses_height = resized_sunglasses.shape[0]
@@ -163,19 +167,10 @@ def add_sunglasses(
 
     src_points = np.array(
         [
-            [
-                0,
-                resized_sunglasses.shape[0],
-            ],
-            [
-                sunglasses_width,
-                resized_sunglasses.shape[0],
-            ],
+            [0, resized_sunglasses.shape[0]],
+            [resized_sunglasses.shape[1], resized_sunglasses.shape[0]],
             [0, 0],
-            [
-                sunglasses_width,
-                0,
-            ],
+            [resized_sunglasses.shape[1], 0],
         ],
         dtype="float32",
     )

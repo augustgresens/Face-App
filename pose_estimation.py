@@ -15,6 +15,7 @@ def estimate_pose(frame, detector, predictor, camera_matrix, dist_coeffs):
                 (225.0, 170.0, -135.0),  # Right eye right corner
                 (-150.0, -150.0, -125.0),  # Left Mouth corner
                 (150.0, -150.0, -125.0),  # Right mouth corner
+                (0.0, -150.0, -125.0),  # Nose Bridge
             ],
             dtype="double",
         )
@@ -27,6 +28,7 @@ def estimate_pose(frame, detector, predictor, camera_matrix, dist_coeffs):
                 (landmarks.part(45).x, landmarks.part(45).y),  # Right eye right corner
                 (landmarks.part(48).x, landmarks.part(48).y),  # Left Mouth corner
                 (landmarks.part(54).x, landmarks.part(54).y),  # Right mouth corner
+                (landmarks.part(28).x, landmarks.part(28).y),  # Nose bridge
             ],
             dtype="double",
         )
