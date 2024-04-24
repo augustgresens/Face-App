@@ -37,39 +37,36 @@ def apply_overlay(frame, landmarks, overlay_img, overlay_points, landmark_indice
     return alpha_blend(frame, transformed_overlay)
 
 
-def add_mustache(frame, upper_lip_pts, bottom_of_nose_y, top_of_mouth_y, mustache):
-    if frame is None:
-        return None
+def add_mustache(frame, landmarks, mustache):
+    src_points = np.array(
+        [
+            [0, 0],  # Top left corner
+            [mustache.shape[1], 0],  # Top right corner
+            [0, mustache.shape[0]],  # Bottom left corner
+            [mustache.shape[1], mustache.shape[0]],  # Bottom right corner
+        ],
+        dtype="float32",
+    )
 
-    if len(upper_lip_pts) < 7:
+    dst_points = np.array(
+        [
+            (landmarks.part(31).x, landmarks.part(31).y),  # Left point under the nose
+            (landmarks.part(35).x, landmarks.part(35).y),  # Right point under the nose
+            (landmarks.part(48).x, landmarks.part(48).y),  # Left mouth corner
+            (landmarks.part(54).x, landmarks.part(54).y),  # Right mouth corner
+        ],
+        dtype="float32",
+    )
+
+    matrix, _ = cv2.findHomography(src_points, dst_points)
+    if matrix is None:
+        print("Homography could not be computed.")
         return frame
 
-    mustache_width = upper_lip_pts[6][0] - upper_lip_pts[0][0]
-    mustache_height = top_of_mouth_y - bottom_of_nose_y
-
-    mustache_resized = cv2.resize(mustache, (int(mustache_width), int(mustache_height)))
-
-    mustache_x = int(
-        upper_lip_pts[0][0] + (mustache_width - mustache_resized.shape[1]) / 2
+    transformed_mustache = cv2.warpPerspective(
+        mustache, matrix, (frame.shape[1], frame.shape[0])
     )
-    mustache_y = int(
-        bottom_of_nose_y + (mustache_height - mustache_resized.shape[0]) / 2
-    )
-
-    for c in range(3):
-        frame[
-            mustache_y : mustache_y + mustache_resized.shape[0],
-            mustache_x : mustache_x + mustache_resized.shape[1],
-            c,
-        ] = mustache_resized[:, :, c] * (mustache_resized[:, :, 3] / 255.0) + frame[
-            mustache_y : mustache_y + mustache_resized.shape[0],
-            mustache_x : mustache_x + mustache_resized.shape[1],
-            c,
-        ] * (
-            1.0 - mustache_resized[:, :, 3] / 255.0
-        )
-
-    return frame
+    return alpha_blend(frame, transformed_mustache)
 
 
 def add_sunglasses(frame, forehead_pts, left_eye_pts, right_eye_pts, sunglasses):

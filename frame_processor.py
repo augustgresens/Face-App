@@ -63,13 +63,8 @@ class FrameProcessor:
                 self.sunglasses,
             )
         if flags.get("mustache"):
-            frame = add_mustache(
-                frame,
-                self.upper_lip_pts,
-                self.bottom_of_nose_y,
-                self.top_of_mouth_y,
-                self.mustache,
-            )
+            frame = add_mustache(frame, landmarks, self.mustache)
+
         if flags.get("overlay"):
             frame = apply_overlay(
                 frame,
@@ -116,7 +111,7 @@ class FrameProcessor:
                     ],
                     dtype="float32",
                 ),
-                [30, 8, 36, 45, 48, 54, 17, 26, 33],  # Corresponding indices
+                [30, 8, 36, 45, 48, 54, 17, 26, 33],
             )
 
         return frame
