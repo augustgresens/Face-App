@@ -49,21 +49,47 @@ class FrameProcessor:
                     dist_coeffs,
                 )
             self.update_facial_points(landmarks)
-            frame = self.process_landmarks(frame, landmarks, flags)
+            frame = self.process_landmarks(
+                frame,
+                landmarks,
+                flags,
+                camera_matrix,
+                dist_coeffs,
+                rotation_vector,
+                translation_vector,
+            )
 
         return frame
 
-    def process_landmarks(self, frame, landmarks, flags):
+    def process_landmarks(
+        self,
+        frame,
+        landmarks,
+        flags,
+        camera_matrix,
+        dist_coeffs,
+        rotation_vector,
+        translation_vector,
+    ):
         if flags.get("sunglasses"):
             frame = add_sunglasses(
                 frame,
-                self.forehead_pts,
-                self.left_eye_pts,
-                self.right_eye_pts,
+                landmarks,
                 self.sunglasses,
+                camera_matrix,
+                dist_coeffs,
+                rotation_vector,
+                translation_vector,
             )
         if flags.get("mustache"):
-            frame = add_mustache(frame, landmarks, self.mustache)
+            frame = add_mustache(
+                frame,
+                self.mustache,
+                camera_matrix,
+                dist_coeffs,
+                rotation_vector,
+                translation_vector,
+            )
 
         if flags.get("overlay"):
             frame = apply_overlay(

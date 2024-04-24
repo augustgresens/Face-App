@@ -37,70 +37,157 @@ def apply_overlay(frame, landmarks, overlay_img, overlay_points, landmark_indice
     return alpha_blend(frame, transformed_overlay)
 
 
-def add_mustache(frame, landmarks, mustache):
+def add_mustache(
+    frame,
+    mustache,
+    camera_matrix,
+    dist_coeffs,
+    rotation_vector,
+    translation_vector,
+):
+    scale_factor = 0.5
+
+    resized_mustache = cv2.resize(
+        mustache, None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_LINEAR
+    )
+
+    vertical_offset = -30
+
+    mustache_width = resized_mustache.shape[1]
+    mustache_height = resized_mustache.shape[0]
+    mustache_3d_points = np.array(
+        [
+            [-mustache_width / 2, vertical_offset, 0],  # Top-left corner
+            [mustache_width / 2, vertical_offset, 0],  # Top-right corner
+            [
+                -mustache_width / 2,
+                vertical_offset - mustache_height,
+                0,
+            ],  # Bottom-left corner
+            [
+                mustache_width / 2,
+                vertical_offset - mustache_height,
+                0,
+            ],  # Bottom-right corner
+        ]
+    )
+
+    image_points_2d, _ = cv2.projectPoints(
+        mustache_3d_points,
+        rotation_vector,
+        translation_vector,
+        camera_matrix,
+        dist_coeffs,
+    )
+
+    dst_points = image_points_2d.reshape(-1, 2)
+
     src_points = np.array(
         [
-            [0, 0],  # Top left corner
-            [mustache.shape[1], 0],  # Top right corner
-            [0, mustache.shape[0]],  # Bottom left corner
-            [mustache.shape[1], mustache.shape[0]],  # Bottom right corner
+            [0, 0],
+            [resized_mustache.shape[1], 0],
+            [0, resized_mustache.shape[0]],
+            [resized_mustache.shape[1], resized_mustache.shape[0]],
         ],
         dtype="float32",
     )
 
-    dst_points = np.array(
-        [
-            (landmarks.part(31).x, landmarks.part(31).y),  # Left point under the nose
-            (landmarks.part(35).x, landmarks.part(35).y),  # Right point under the nose
-            (landmarks.part(48).x, landmarks.part(48).y),  # Left mouth corner
-            (landmarks.part(54).x, landmarks.part(54).y),  # Right mouth corner
-        ],
-        dtype="float32",
-    )
-
-    matrix, _ = cv2.findHomography(src_points, dst_points)
-    if matrix is None:
+    transformation_matrix, _ = cv2.findHomography(src_points, dst_points)
+    if transformation_matrix is None:
         print("Homography could not be computed.")
         return frame
 
     transformed_mustache = cv2.warpPerspective(
-        mustache, matrix, (frame.shape[1], frame.shape[0])
+        resized_mustache, transformation_matrix, (frame.shape[1], frame.shape[0])
     )
-    return alpha_blend(frame, transformed_mustache)
+
+    frame = alpha_blend(frame, transformed_mustache)
+    return frame
 
 
-def add_sunglasses(frame, forehead_pts, left_eye_pts, right_eye_pts, sunglasses):
-    if len(forehead_pts) < 9 or len(left_eye_pts) < 4 or len(right_eye_pts) < 3:
+def add_sunglasses(
+    frame,
+    landmarks,
+    sunglasses,
+    camera_matrix,
+    dist_coeffs,
+    rotation_vector,
+    translation_vector,
+):
+    temple_width = np.linalg.norm(
+        [
+            (landmarks.part(16).x - landmarks.part(0).x),
+            (landmarks.part(16).y - landmarks.part(0).y),
+        ]
+    )
+    scale_factor = temple_width / sunglasses.shape[1] * 4
+
+    resized_sunglasses = cv2.resize(
+        sunglasses,
+        None,
+        fx=scale_factor,
+        fy=scale_factor,
+        interpolation=cv2.INTER_LINEAR,
+    )
+
+    vertical_offset = landmarks.part(27).y + resized_sunglasses.shape[0] / 10
+
+    sunglasses_width = resized_sunglasses.shape[1]
+    sunglasses_height = resized_sunglasses.shape[0]
+    sunglasses_3d_points = np.array(
+        [
+            [
+                -sunglasses_width / 2,
+                vertical_offset - sunglasses_height,
+                0,
+            ],  # Top-left corner
+            [
+                sunglasses_width / 2,
+                vertical_offset - sunglasses_height,
+                0,
+            ],  # Top-right corner
+            [-sunglasses_width / 2, vertical_offset, 0],  # Bottom-left corner
+            [sunglasses_width / 2, vertical_offset, 0],  # Bottom-right corner
+        ]
+    )
+
+    image_points_2d, _ = cv2.projectPoints(
+        sunglasses_3d_points,
+        rotation_vector,
+        translation_vector,
+        camera_matrix,
+        dist_coeffs,
+    )
+
+    dst_points = image_points_2d.reshape(-1, 2)
+
+    src_points = np.array(
+        [
+            [
+                0,
+                resized_sunglasses.shape[0],
+            ],
+            [
+                sunglasses_width,
+                resized_sunglasses.shape[0],
+            ],
+            [0, 0],
+            [
+                sunglasses_width,
+                0,
+            ],
+        ],
+        dtype="float32",
+    )
+
+    transformation_matrix, _ = cv2.findHomography(src_points, dst_points)
+    if transformation_matrix is None:
+        print("Homography could not be computed.")
         return frame
 
-    sunglasses_width = forehead_pts[8][0] - forehead_pts[0][0]
-    sunglasses_height = max(
-        left_eye_pts[3][1] - forehead_pts[2][1],
-        right_eye_pts[2][1] - forehead_pts[2][1],
+    transformed_sunglasses = cv2.warpPerspective(
+        resized_sunglasses, transformation_matrix, (frame.shape[1], frame.shape[0])
     )
 
-    sunglasses_resized = cv2.resize(
-        sunglasses, (int(sunglasses_width), int(sunglasses_height))
-    )
-    sunglasses_x = int(
-        forehead_pts[0][0] + (sunglasses_width - sunglasses_resized.shape[1]) / 2
-    )
-    sunglasses_y = int(
-        min(left_eye_pts[0][1], right_eye_pts[0][1], forehead_pts[0][1])
-        + (sunglasses_height - sunglasses_resized.shape[0]) / 2
-    )
-
-    for c in range(3):
-        frame[
-            sunglasses_y : sunglasses_y + sunglasses_resized.shape[0],
-            sunglasses_x : sunglasses_x + sunglasses_resized.shape[1],
-            c,
-        ] = sunglasses_resized[:, :, c] * (sunglasses_resized[:, :, 3] / 255.0) + frame[
-            sunglasses_y : sunglasses_y + sunglasses_resized.shape[0],
-            sunglasses_x : sunglasses_x + sunglasses_resized.shape[1],
-            c,
-        ] * (
-            1.0 - sunglasses_resized[:, :, 3] / 255.0
-        )
-
+    frame = alpha_blend(frame, transformed_sunglasses)
     return frame
