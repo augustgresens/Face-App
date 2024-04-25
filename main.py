@@ -41,7 +41,6 @@ class FaceApp:
 
         self.gui = GUI(self.root, self.update_flags)
         self.flags = {
-            "axes": False,
             "sunglasses": False,
             "mustache": False,
             "overlay": False,

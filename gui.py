@@ -14,12 +14,6 @@ class GUI:
 
         button_frame = tk.Frame(self.parent)
         button_frame.pack(side=tk.BOTTOM, fill=tk.X)
-
-        tk.Button(
-            button_frame,
-            text="Toggle Axes",
-            command=lambda: self.update_callback("axes"),
-        ).pack(side=tk.LEFT)
         tk.Button(
             button_frame,
             text="Toggle Sunglasses",

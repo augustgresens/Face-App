@@ -12,29 +12,17 @@ def alpha_blend(frame, overlay, position=(0, 0)):
     y = max(y, 0)
 
     roi = frame[y:y_end, x:x_end]
-    overlay = overlay[0 : (y_end - y), 0 : (x_end - x)]
+    overlay_roi = overlay[0 : (y_end - y), 0 : (x_end - x)]
 
-    alpha_overlay = overlay[:, :, 3] / 255.0
+    alpha_overlay = overlay_roi[:, :, 3] / 255.0
     alpha_frame = 1.0 - alpha_overlay
     for c in range(3):
-        roi[:, :, c] = alpha_overlay * overlay[:, :, c] + alpha_frame * roi[:, :, c]
+        roi[:, :, c] = (
+            alpha_overlay * overlay_roi[:, :, c] + alpha_frame * roi[:, :, c]
+        ).astype(np.uint8)
 
     frame[y:y_end, x:x_end] = roi
     return frame
-
-
-def apply_overlay(frame, landmarks, overlay_img, overlay_points, landmark_indices):
-    image_points_2d = np.array(
-        [(landmarks.part(i).x, landmarks.part(i).y) for i in landmark_indices],
-        dtype="float32",
-    )
-
-    matrix, _ = cv2.findHomography(overlay_points, image_points_2d)
-    transformed_overlay = cv2.warpPerspective(
-        overlay_img, matrix, (frame.shape[1], frame.shape[0])
-    )
-
-    return alpha_blend(frame, transformed_overlay)
 
 
 def add_mustache(
@@ -114,14 +102,7 @@ def add_sunglasses(
     rotation_vector,
     translation_vector,
 ):
-    # Using eye corners for horizontal scaling and nose bridge for vertical positioning
-    eye_distance = np.linalg.norm(
-        [
-            (landmarks.part(45).x - landmarks.part(36).x),
-            (landmarks.part(45).y - landmarks.part(36).y),
-        ]
-    )
-    scale_factor = 1.5
+    scale_factor = 1.7
 
     resized_sunglasses = cv2.resize(
         sunglasses,
@@ -131,10 +112,8 @@ def add_sunglasses(
         interpolation=cv2.INTER_LINEAR,
     )
 
-    # Positioning the sunglasses at the nose bridge
-    # Adjust the 'y' position to move the sunglasses up or down relative to the nose bridge
     nose_bridge_y = landmarks.part(28).y
-    vertical_offset = nose_bridge_y + int(resized_sunglasses.shape[0])
+    vertical_offset = nose_bridge_y + int(resized_sunglasses.shape[0] / 1.9)
 
     sunglasses_width = resized_sunglasses.shape[1]
     sunglasses_height = resized_sunglasses.shape[0]
@@ -186,3 +165,67 @@ def add_sunglasses(
 
     frame = alpha_blend(frame, transformed_sunglasses)
     return frame
+
+
+def apply_overlay(
+    frame,
+    landmarks,
+    overlay_img,
+    camera_matrix,
+    dist_coeffs,
+    rotation_vector,
+    translation_vector,
+):
+
+    corrected_rotation_vector = -rotation_vector
+    model_points = np.array(
+        [
+            (
+                0.0,
+                400.0,
+                -100.0,
+            ),  # Higher top of the forehead (adjusted outward and upward)
+            (0.0, -300.0, -100.0),  # Below the chin
+            (-300.0, 0.0, -100.0),  # Left side of the face near the ear
+            (300.0, 0.0, -100.0),  # Right side of the face near the ear
+        ]
+    )
+
+    image_points, _ = cv2.projectPoints(
+        model_points,
+        corrected_rotation_vector,
+        translation_vector,
+        camera_matrix,
+        dist_coeffs,
+    )
+    image_points = image_points.reshape(-1, 2).astype("float32")
+
+    overlay_points = np.array(
+        [
+            [
+                overlay_img.shape[1] * 0.5,
+                overlay_img.shape[0] * 0.05,
+            ],  # Top middle for the forehead
+            [
+                overlay_img.shape[1] * 0.5,
+                overlay_img.shape[0] * 0.9,
+            ],  # Bottom middle for below the chin
+            [
+                overlay_img.shape[1] * 0.05,
+                overlay_img.shape[0] * 0.5,
+            ],  # Left middle height
+            [
+                overlay_img.shape[1] * 0.95,
+                overlay_img.shape[0] * 0.5,
+            ],  # Right middle height
+        ],
+        dtype="float32",
+    )
+
+    homography_matrix, _ = cv2.findHomography(overlay_points, image_points)
+
+    transformed_overlay = cv2.warpPerspective(
+        overlay_img, homography_matrix, (frame.shape[1], frame.shape[0])
+    )
+
+    return alpha_blend(frame, transformed_overlay)
