@@ -176,53 +176,36 @@ def apply_overlay(
     rotation_vector,
     translation_vector,
 ):
+    angle = np.linalg.norm(-rotation_vector)
 
-    corrected_rotation_vector = -rotation_vector
+    offset_x = max(350, 350 + 100 * abs(angle))
+    offset_y = 80
+
     model_points = np.array(
         [
-            (
-                0.0,
-                400.0,
-                -100.0,
-            ),  # Higher top of the forehead (adjusted outward and upward)
-            (0.0, -300.0, -100.0),  # Below the chin
-            (-300.0, 0.0, -100.0),  # Left side of the face near the ear
-            (300.0, 0.0, -100.0),  # Right side of the face near the ear
+            (0.0, 800.0, -50.0),  # Top of the forehead
+            (0.0, -450.0, -50.0),  # Below the chin
+            (-offset_x, offset_y, -50.0),  # left side
+            (offset_x, offset_y, -50.0),  # right side
         ]
     )
 
     image_points, _ = cv2.projectPoints(
-        model_points,
-        corrected_rotation_vector,
-        translation_vector,
-        camera_matrix,
-        dist_coeffs,
+        model_points, -rotation_vector, translation_vector, camera_matrix, dist_coeffs
     )
     image_points = image_points.reshape(-1, 2).astype("float32")
 
     overlay_points = np.array(
         [
-            [
-                overlay_img.shape[1] * 0.5,
-                overlay_img.shape[0] * 0.05,
-            ],  # Top middle for the forehead
-            [
-                overlay_img.shape[1] * 0.5,
-                overlay_img.shape[0] * 0.9,
-            ],  # Bottom middle for below the chin
-            [
-                overlay_img.shape[1] * 0.05,
-                overlay_img.shape[0] * 0.5,
-            ],  # Left middle height
-            [
-                overlay_img.shape[1] * 0.95,
-                overlay_img.shape[0] * 0.5,
-            ],  # Right middle height
+            [overlay_img.shape[1] * 0.5, overlay_img.shape[0] * 0.05],
+            [overlay_img.shape[1] * 0.5, overlay_img.shape[0] * 0.95],
+            [overlay_img.shape[1] * 0.05, overlay_img.shape[0] * 0.5],
+            [overlay_img.shape[1] * 0.95, overlay_img.shape[0] * 0.5],
         ],
         dtype="float32",
     )
 
-    homography_matrix, _ = cv2.findHomography(overlay_points, image_points)
+    homography_matrix, _ = cv2.findHomography(overlay_points, image_points, cv2.RANSAC)
 
     transformed_overlay = cv2.warpPerspective(
         overlay_img, homography_matrix, (frame.shape[1], frame.shape[0])

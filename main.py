@@ -23,7 +23,7 @@ class FaceApp:
         if self.mustache is None:
             raise FileNotFoundError("Mustache image not found.")
 
-        self.overlay_img = cv2.imread("img/peacockbass.png", cv2.IMREAD_UNCHANGED)
+        self.overlay_img = cv2.imread("img/mask.png", cv2.IMREAD_UNCHANGED)
         if self.overlay_img is None:
             raise FileNotFoundError("Overlay image not found.")
 
