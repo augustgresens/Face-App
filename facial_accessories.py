@@ -34,6 +34,7 @@ def add_mustache(
     translation_vector,
 ):
     scale_factor = 0.5
+    corrected_rotation_vector = -rotation_vector
 
     resized_mustache = cv2.resize(
         mustache, None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_LINEAR
@@ -62,7 +63,7 @@ def add_mustache(
 
     image_points_2d, _ = cv2.projectPoints(
         mustache_3d_points,
-        rotation_vector,
+        corrected_rotation_vector,
         translation_vector,
         camera_matrix,
         dist_coeffs,
@@ -102,7 +103,8 @@ def add_sunglasses(
     rotation_vector,
     translation_vector,
 ):
-    scale_factor = 1.7
+    scale_factor = 1.8
+    corrected_rotation_vector = -rotation_vector
 
     resized_sunglasses = cv2.resize(
         sunglasses,
@@ -136,7 +138,7 @@ def add_sunglasses(
 
     image_points_2d, _ = cv2.projectPoints(
         sunglasses_3d_points,
-        rotation_vector,
+        corrected_rotation_vector,
         translation_vector,
         camera_matrix,
         dist_coeffs,
