@@ -28,6 +28,7 @@ def alpha_blend(frame, overlay, position=(0, 0)):
 def add_mustache(
     frame,
     mustache,
+    landmarks,
     camera_matrix,
     dist_coeffs,
     rotation_vector,

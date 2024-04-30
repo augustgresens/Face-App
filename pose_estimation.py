@@ -3,7 +3,12 @@ import numpy as np
 
 
 def estimate_pose(frame, detector, predictor, camera_matrix, dist_coeffs):
-    grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    # Ensure the frame is converted to grayscale only if it is not already
+    if len(frame.shape) == 3 and frame.shape[2] == 3:
+        grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    else:
+        grayscale = frame  # The frame is already in grayscale
+
     faces = detector(grayscale)
     for face in faces:
         landmarks = predictor(grayscale, face)
@@ -42,4 +47,6 @@ def estimate_pose(frame, detector, predictor, camera_matrix, dist_coeffs):
         )
 
         return success, rotation_vector, translation_vector, landmarks
+
+    # If no faces are detected, return None for all components
     return None, None, None, None
