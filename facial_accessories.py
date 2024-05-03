@@ -25,6 +25,17 @@ def alpha_blend(frame, overlay, position=(0, 0)):
     return frame
 
 
+def compute_homography(src_points, dst_points):
+    transformation_matrix, _ = cv2.findHomography(src_points, dst_points)
+    return transformation_matrix
+
+
+def transform_overlay(overlay, transformation_matrix, frame_dimensions):
+    return cv2.warpPerspective(
+        overlay, transformation_matrix, (frame_dimensions[1], frame_dimensions[0])
+    )
+
+
 def add_mustache(
     frame,
     mustache,
@@ -34,44 +45,42 @@ def add_mustache(
     rotation_vector,
     translation_vector,
 ):
-    scale_factor = 0.5
-    corrected_rotation_vector = -rotation_vector
-
+    scale_factor = 0.45
     resized_mustache = cv2.resize(
         mustache, None, fx=scale_factor, fy=scale_factor, interpolation=cv2.INTER_LINEAR
     )
 
-    vertical_offset = -50
+    _, pitch, _ = cv2.Rodrigues(rotation_vector)[0]
+    pitch = pitch[0]
 
-    mustache_width = resized_mustache.shape[1]
-    mustache_height = resized_mustache.shape[0]
+    vertical_offset = -50 + int(20 * pitch)
+
     mustache_3d_points = np.array(
         [
-            [-mustache_width / 2, vertical_offset, 0],  # Top-left corner
-            [mustache_width / 2, vertical_offset, 0],  # Top-right corner
+            [-resized_mustache.shape[1] / 2, vertical_offset, 0],
+            [resized_mustache.shape[1] / 2, vertical_offset, 0],
             [
-                -mustache_width / 2,
-                vertical_offset - mustache_height,
+                -resized_mustache.shape[1] / 2,
+                vertical_offset - resized_mustache.shape[0],
                 0,
-            ],  # Bottom-left corner
+            ],
             [
-                mustache_width / 2,
-                vertical_offset - mustache_height,
+                resized_mustache.shape[1] / 2,
+                vertical_offset - resized_mustache.shape[0],
                 0,
-            ],  # Bottom-right corner
+            ],
         ]
     )
 
     image_points_2d, _ = cv2.projectPoints(
         mustache_3d_points,
-        corrected_rotation_vector,
+        -rotation_vector,
         translation_vector,
         camera_matrix,
         dist_coeffs,
     )
 
     dst_points = image_points_2d.reshape(-1, 2)
-
     src_points = np.array(
         [
             [0, 0],
@@ -82,16 +91,13 @@ def add_mustache(
         dtype="float32",
     )
 
-    transformation_matrix, _ = cv2.findHomography(src_points, dst_points)
-    if transformation_matrix is None:
-        print("Homography could not be computed.")
-        return frame
+    transformation_matrix = compute_homography(src_points, dst_points)
+    if transformation_matrix is not None:
+        transformed_mustache = transform_overlay(
+            resized_mustache, transformation_matrix, frame.shape
+        )
+        frame = alpha_blend(frame, transformed_mustache)
 
-    transformed_mustache = cv2.warpPerspective(
-        resized_mustache, transformation_matrix, (frame.shape[1], frame.shape[0])
-    )
-
-    frame = alpha_blend(frame, transformed_mustache)
     return frame
 
 
@@ -104,14 +110,14 @@ def add_sunglasses(
     rotation_vector,
     translation_vector,
 ):
-    scale_factor = 1.8
+    scale_factor = 1.9
     corrected_rotation_vector = -rotation_vector
 
     resized_sunglasses = cv2.resize(
         sunglasses,
         None,
         fx=scale_factor,
-        fy=scale_factor,
+        fy=scale_factor * 1.2,
         interpolation=cv2.INTER_LINEAR,
     )
 
@@ -122,18 +128,10 @@ def add_sunglasses(
     sunglasses_height = resized_sunglasses.shape[0]
     sunglasses_3d_points = np.array(
         [
-            [
-                -sunglasses_width / 2,
-                vertical_offset - sunglasses_height,
-                0,
-            ],  # Top-left corner
-            [
-                sunglasses_width / 2,
-                vertical_offset - sunglasses_height,
-                0,
-            ],  # Top-right corner
-            [-sunglasses_width / 2, vertical_offset, 0],  # Bottom-left corner
-            [sunglasses_width / 2, vertical_offset, 0],  # Bottom-right corner
+            [-sunglasses_width / 2, vertical_offset - sunglasses_height, 0],
+            [sunglasses_width / 2, vertical_offset - sunglasses_height, 0],
+            [-sunglasses_width / 2, vertical_offset, 0],
+            [sunglasses_width / 2, vertical_offset, 0],
         ]
     )
 
@@ -146,7 +144,6 @@ def add_sunglasses(
     )
 
     dst_points = image_points_2d.reshape(-1, 2)
-
     src_points = np.array(
         [
             [0, resized_sunglasses.shape[0]],
@@ -157,16 +154,13 @@ def add_sunglasses(
         dtype="float32",
     )
 
-    transformation_matrix, _ = cv2.findHomography(src_points, dst_points)
-    if transformation_matrix is None:
-        print("Homography could not be computed.")
-        return frame
+    transformation_matrix = compute_homography(src_points, dst_points)
+    if transformation_matrix is not None:
+        transformed_sunglasses = transform_overlay(
+            resized_sunglasses, transformation_matrix, frame.shape
+        )
+        frame = alpha_blend(frame, transformed_sunglasses)
 
-    transformed_sunglasses = cv2.warpPerspective(
-        resized_sunglasses, transformation_matrix, (frame.shape[1], frame.shape[0])
-    )
-
-    frame = alpha_blend(frame, transformed_sunglasses)
     return frame
 
 
@@ -188,8 +182,8 @@ def apply_overlay(
         [
             (0.0, 800.0, -50.0),  # Top of the forehead
             (0.0, -450.0, -50.0),  # Below the chin
-            (-offset_x, offset_y, -50.0),  # left side
-            (offset_x, offset_y, -50.0),  # right side
+            (-offset_x, offset_y, -50.0),  # Left side
+            (offset_x, offset_y, -50.0),  # Right side
         ]
     )
 
@@ -208,10 +202,11 @@ def apply_overlay(
         dtype="float32",
     )
 
-    homography_matrix, _ = cv2.findHomography(overlay_points, image_points, cv2.RANSAC)
+    homography_matrix = compute_homography(overlay_points, image_points)
+    if homography_matrix is not None:
+        transformed_overlay = transform_overlay(
+            overlay_img, homography_matrix, frame.shape
+        )
+        frame = alpha_blend(frame, transformed_overlay)
 
-    transformed_overlay = cv2.warpPerspective(
-        overlay_img, homography_matrix, (frame.shape[1], frame.shape[0])
-    )
-
-    return alpha_blend(frame, transformed_overlay)
+    return frame
