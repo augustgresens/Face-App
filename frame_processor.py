@@ -43,7 +43,7 @@ class FrameProcessor:
 
         landmarks = self.handle_last_good_detection(landmarks, success)
 
-        if landmarks:
+        if landmarks and rotation_vector is not None and translation_vector is not None:
             frame = self.apply_overlays(
                 frame, landmarks, flags, rotation_vector, translation_vector
             )
