@@ -3,6 +3,7 @@ import numpy as np
 
 
 def estimate_pose(frame, detector, predictor, camera_matrix, dist_coeffs):
+    """Estimate the pose of a face in a video frame"""
     if len(frame.shape) == 3 and frame.shape[2] == 3:
         grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     else:

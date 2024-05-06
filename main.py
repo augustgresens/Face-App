@@ -6,7 +6,10 @@ from frame_processor import FrameProcessor
 
 
 class FaceApp:
+    """Face application for applying accessories using facial landmarks"""
+
     def __init__(self):
+        """Initialize the face application"""
         self.root = tk.Tk()
         self.root.bind("<Escape>", lambda e: self.root.quit())
 
@@ -50,6 +53,7 @@ class FaceApp:
         self.root.mainloop()
 
     def update_flags(self, flag):
+        """Update the overlay flags based on user input"""
         if flag == "clear":
             for key in self.flags:
                 self.flags[key] = False
@@ -57,6 +61,7 @@ class FaceApp:
             self.flags[flag] = not self.flags[flag]
 
     def show_frame(self):
+        """Capture and display a video frame"""
         ret, frame = self.cap.read()
         if not ret:
             print("Failed to capture frame")

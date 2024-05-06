@@ -2,12 +2,15 @@ import cv2
 import dlib
 import numpy as np
 from collections import deque
-from facial_accessories import add_mustache, add_sunglasses, apply_overlay
+from facial_accessories import FacialAccessories
 from pose_estimation import estimate_pose
 
 
 class FrameProcessor:
+    """Class for processing video frames with facial landmark detection and overlays"""
+
     def __init__(self, detector, predictor, sunglasses, mustache, overlay_img):
+        """Initialize the frame processor with the necessary models and overlays"""
         self.detector = detector
         self.predictor = predictor
         self.sunglasses = sunglasses
@@ -22,20 +25,16 @@ class FrameProcessor:
             "criteria": (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_COUNT, 10, 0.03),
         }
         self.frame_history = deque(maxlen=10)
+        self.clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        self.kernel = np.ones((5, 5), np.uint8)
+        self.facial_accessories = FacialAccessories()
 
     def process_frame(self, frame, flags):
-        frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        frame_gray = cv2.equalizeHist(frame_gray)
-
+        """Process a video frame to apply overlays based on facial landmarks"""
+        frame_gray = self.preprocess_frame(frame)
         landmarks = self.update_using_optical_flow(frame_gray)
         success, rotation_vector, translation_vector, detected_landmarks = (
-            estimate_pose(
-                frame_gray,
-                self.detector,
-                self.predictor,
-                self.get_camera_matrix(frame.shape),
-                np.zeros((4, 1)),
-            )
+            self.detect_pose(frame_gray)
         )
 
         if detected_landmarks:
@@ -45,7 +44,7 @@ class FrameProcessor:
         landmarks = self.handle_last_good_detection(landmarks, success)
 
         if landmarks:
-            frame = self.process_landmarks(
+            frame = self.apply_overlays(
                 frame, landmarks, flags, rotation_vector, translation_vector
             )
 
@@ -57,7 +56,26 @@ class FrameProcessor:
 
         return frame
 
+    def preprocess_frame(self, frame):
+        """Preprocess the frame by converting to grayscale and applying filters"""
+        frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        frame_gray = self.clahe.apply(frame_gray)
+        frame_gray = cv2.bilateralFilter(frame_gray, 9, 75, 75)
+        frame_gray = cv2.morphologyEx(frame_gray, cv2.MORPH_OPEN, self.kernel)
+        return frame_gray
+
+    def detect_pose(self, frame_gray):
+        """Detect the pose and facial landmarks in a frame"""
+        return estimate_pose(
+            frame_gray,
+            self.detector,
+            self.predictor,
+            self.get_camera_matrix(frame_gray.shape),
+            np.zeros((4, 1)),
+        )
+
     def handle_last_good_detection(self, landmarks, success):
+        """Handle cases where detection fails using the last known good detection"""
         if success:
             self.last_good_landmarks = landmarks
             self.frame_history.clear()
@@ -74,7 +92,7 @@ class FrameProcessor:
         return landmarks
 
     def average_landmarks(self):
-        """Averages out the landmarks over the last few frames to smooth transitions."""
+        """Average out the landmarks over the last few frames to smooth transitions"""
         if not self.frame_history:
             return None
 
@@ -96,6 +114,7 @@ class FrameProcessor:
         return self.create_full_object_detection(sum_x, sum_y, count)
 
     def create_full_object_detection(self, sum_x, sum_y, count):
+        """Create a dlib full object detection from averaged landmark positions"""
         points = [
             dlib.point(int(sum_x[i][0] / count), int(sum_y[i][0] / count))
             for i in range(68)
@@ -108,15 +127,8 @@ class FrameProcessor:
         )
         return dlib.full_object_detection(rect, points)
 
-    def get_camera_matrix(self, shape):
-        focal_length = shape[1]
-        center = (shape[1] // 2, shape[0] // 2)
-        return np.array(
-            [[focal_length, 0, center[0]], [0, focal_length, center[1]], [0, 0, 1]],
-            dtype="double",
-        )
-
     def update_using_optical_flow(self, frame_gray):
+        """Update facial landmarks using optical flow if previous landmarks are known"""
         if self.prev_gray is not None and self.prev_points is not None:
             new_points, st, err = cv2.calcOpticalFlowPyrLK(
                 self.prev_gray, frame_gray, self.prev_points, None, **self.lk_params
@@ -127,6 +139,7 @@ class FrameProcessor:
         return None
 
     def convert_points_to_landmarks(self, points):
+        """Convert points to dlib full object detection format"""
         if points is None or points.size == 0:
             return None
 
@@ -140,13 +153,14 @@ class FrameProcessor:
         dlib_points = [dlib.point(int(p[0]), int(p[1])) for p in points]
         return dlib.full_object_detection(rect, dlib_points)
 
-    def process_landmarks(
+    def apply_overlays(
         self, frame, landmarks, flags, rotation_vector, translation_vector
     ):
+        """Apply overlays to the frame based on the given landmarks and flags"""
         camera_matrix = self.get_camera_matrix(frame.shape)
         dist_coeffs = np.zeros((4, 1))
         if flags.get("sunglasses"):
-            frame = add_sunglasses(
+            frame = self.facial_accessories.add_sunglasses(
                 frame,
                 landmarks,
                 self.sunglasses,
@@ -156,7 +170,7 @@ class FrameProcessor:
                 translation_vector,
             )
         if flags.get("mustache"):
-            frame = add_mustache(
+            frame = self.facial_accessories.add_mustache(
                 frame,
                 self.mustache,
                 landmarks,
@@ -166,7 +180,7 @@ class FrameProcessor:
                 translation_vector,
             )
         if flags.get("overlay"):
-            frame = apply_overlay(
+            frame = self.facial_accessories.apply_overlay(
                 frame,
                 landmarks,
                 self.overlay_img,
@@ -176,3 +190,12 @@ class FrameProcessor:
                 translation_vector,
             )
         return frame
+
+    def get_camera_matrix(self, shape):
+        """Get the camera matrix based on the frame shape"""
+        focal_length = shape[1]
+        center = (shape[1] // 2, shape[0] // 2)
+        return np.array(
+            [[focal_length, 0, center[0]], [0, focal_length, center[1]], [0, 0, 1]],
+            dtype="double",
+        )
