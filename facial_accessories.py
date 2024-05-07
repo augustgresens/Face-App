@@ -141,10 +141,10 @@ class FacialAccessories:
         sunglasses_height = resized_sunglasses.shape[0]
         sunglasses_3d_points = np.array(
             [
-                [-sunglasses_width / 2, vertical_offset - sunglasses_height, 0],
-                [sunglasses_width / 2, vertical_offset - sunglasses_height, 0],
-                [-sunglasses_width / 2, vertical_offset, 0],
-                [sunglasses_width / 2, vertical_offset, 0],
+                [-sunglasses_width / 2, vertical_offset - sunglasses_height, -50],
+                [sunglasses_width / 2, vertical_offset - sunglasses_height, -50],
+                [-sunglasses_width / 2, vertical_offset, -50],
+                [sunglasses_width / 2, vertical_offset, -50],
             ]
         )
 
@@ -189,7 +189,7 @@ class FacialAccessories:
         """Apply a custom overlay to a frame based on facial landmarks"""
         angle = np.linalg.norm(-rotation_vector)
 
-        offset_x = max(350, 350 + 100 * abs(angle))
+        offset_x = max(150, 150 + 100 * abs(angle))
         offset_y = 80
 
         model_points = np.array(
