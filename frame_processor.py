@@ -79,10 +79,8 @@ class FrameProcessor:
         if success:
             self.last_good_landmarks = landmarks
             self.frame_history.clear()
-        elif self.last_good_landmarks and not self.frame_history:
-            return self.last_good_landmarks
-
-        if not success:
+        elif self.last_good_landmarks:
+            landmarks = self.last_good_landmarks
             self.frame_history.append(landmarks)
             if len(self.frame_history) > 10:
                 averaged_landmarks = self.average_landmarks()
@@ -133,7 +131,7 @@ class FrameProcessor:
             new_points, st, err = cv2.calcOpticalFlowPyrLK(
                 self.prev_gray, frame_gray, self.prev_points, None, **self.lk_params
             )
-            if new_points is not None and st.sum() > 0:
+            if new_points is not None and st.sum() > len(st) * 0.75:
                 self.prev_points = new_points[st == 1].reshape(-1, 1, 2)
                 return self.convert_points_to_landmarks(self.prev_points)
         return None

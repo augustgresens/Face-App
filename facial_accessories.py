@@ -131,8 +131,11 @@ class FacialAccessories:
             interpolation=cv2.INTER_LINEAR,
         )
 
-        nose_bridge_y = landmarks.part(28).y
-        vertical_offset = nose_bridge_y + int(resized_sunglasses.shape[0] / 1.9)
+        point_19 = landmarks.part(20)
+        point_24 = landmarks.part(25)
+
+        midpoint_y = (point_19.y + point_24.y) // 2
+        vertical_offset = midpoint_y + landmarks.part(30).y
 
         sunglasses_width = resized_sunglasses.shape[1]
         sunglasses_height = resized_sunglasses.shape[0]
