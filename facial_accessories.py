@@ -120,31 +120,35 @@ class FacialAccessories:
         translation_vector,
     ):
         """Add a sunglasses overlay to a frame based on facial landmarks"""
-        scale_factor = 1.9
-        corrected_rotation_vector = -rotation_vector
+        scale_factor = 1.7
+        corrected_rotation_vector = -rotation_vector.copy()
+        corrected_rotation_vector[2] *= 0.1
+
+        _, pitch, _ = cv2.Rodrigues(corrected_rotation_vector)[0]
+        pitch = pitch[0]
+        vertical_offset = int(275 + 20 * pitch)
 
         resized_sunglasses = cv2.resize(
             sunglasses,
             None,
             fx=scale_factor,
-            fy=scale_factor * 1.2,
+            fy=scale_factor,
             interpolation=cv2.INTER_LINEAR,
         )
 
-        point_19 = landmarks.part(20)
-        point_24 = landmarks.part(25)
-
-        midpoint_y = (point_19.y + point_24.y) // 2
-        vertical_offset = midpoint_y + landmarks.part(30).y
+        # point_20 = landmarks.part(20)
+        # point_25 = landmarks.part(25)
+        # midpoint_y = (point_20.y + point_25.y) // 2
+        # vertical_offset += midpoint_y - resized_sunglasses.shape[0] // 2
 
         sunglasses_width = resized_sunglasses.shape[1]
         sunglasses_height = resized_sunglasses.shape[0]
         sunglasses_3d_points = np.array(
             [
-                [-sunglasses_width / 2, vertical_offset - sunglasses_height, -50],
-                [sunglasses_width / 2, vertical_offset - sunglasses_height, -50],
-                [-sunglasses_width / 2, vertical_offset, -50],
-                [sunglasses_width / 2, vertical_offset, -50],
+                [-sunglasses_width / 2, vertical_offset - sunglasses_height, 0],
+                [sunglasses_width / 2, vertical_offset - sunglasses_height, 0],
+                [-sunglasses_width / 2, vertical_offset, 0],
+                [sunglasses_width / 2, vertical_offset, 0],
             ]
         )
 
@@ -179,7 +183,6 @@ class FacialAccessories:
     def apply_overlay(
         self,
         frame,
-        landmarks,
         overlay_img,
         camera_matrix,
         dist_coeffs,

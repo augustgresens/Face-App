@@ -180,7 +180,6 @@ class FrameProcessor:
         if flags.get("overlay"):
             frame = self.facial_accessories.apply_overlay(
                 frame,
-                landmarks,
                 self.overlay_img,
                 camera_matrix,
                 dist_coeffs,
