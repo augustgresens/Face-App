@@ -73,7 +73,7 @@ python main.py
         - Adds a mustache overlay to a frame based on facial landmarks.
     - **Key Features**
         - Utilizes `cv2.resize` to adjust the mustache to the appropriate size.
-        - Uses `cv2.Rodrigues` to convert rotation vector into a rotation matrix, facilitating the calculation of 3D to 2D projection points, and properly adjust the pitch.
+        - Uses `cv2.Rodrigues` to convert the rotation vector into a rotation matrix, facilitating the calculation of 3D to 2D projection points, and properly adjust the pitch.
         - `cv2.projectPoints` converts 3D points to their corresponding 2D points
         - Uses rotation and translation vectors for accurate placement on face with pose.
         - Uses `compute_homography` to correctly align the mustache with where it should be, given correct source points and destination points.
@@ -83,7 +83,7 @@ python main.py
         - Adds a sunglasses overlay to a frame based on facial landmarks.
     - **Key Features**
         - Utilizes `cv2.resize` to adjust the mustache to the appropriate size.
-        - - Uses `cv2.Rodrigues` to convert rotation vector into a rotation matrix, facilitating the calculation of 3D to 2D projection points, and properly adjust the pitch.
+        - Uses `cv2.Rodrigues` to convert the rotation vector into a rotation matrix, facilitating the calculation of 3D to 2D projection points, and properly adjust the pitch.
         - `cv2.projectPoints` converts 3D points to their corresponding 2D points
         - Uses rotation and translation vectors for accurate placement on face with pose.
         - Uses `compute_homography` to correctly align the sunglasses with where it should be, given correct source points and destination points.
