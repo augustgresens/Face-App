@@ -21,13 +21,15 @@ To run this project, you'll need to have Python installed along with several dep
 1. **Clone the repository**:
 
     ```bash
-    git clone <repository-url>
+    git clone https://github.com/augustgresens/Face-App.git
     ```
 
 2. **Install dependencies**:
 
     ```bash
-    pip install -r requirements.txt
+    pip install opencv-python
+    pip install dlib
+    pip install Pillow
     ```
 
 3. **Prepare the shape predictor**:
