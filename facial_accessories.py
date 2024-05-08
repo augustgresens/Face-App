@@ -49,6 +49,9 @@ class FacialAccessories:
         translation_vector,
     ):
         """Add a mustache overlay to a frame based on facial landmarks"""
+        if frame is None:
+            return None
+
         scale_factor = 0.45
         resized_mustache = cv2.resize(
             mustache,

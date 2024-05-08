@@ -194,3 +194,22 @@ python main.py
 
 ### Testing
 `testing.py` contains unit tests for the facial filters using the unittest module.
+1. `setUp`
+    - **Description**
+        - Initializes testing environment by loading samples and mock data.
+2. `test_with_null_image_input`
+    - **Description**
+        - Tests how the `add_mustache` function handles a `None` input for the frame.
+    - **Key Features**
+        - The function should return `None`, which means that it gracefully handles misinputs.
+3. `test_no_faces_detected`
+    - **Description**
+        - Evaluates response of the `add_mustache` function when no facial landmarks are detected.
+    - **Key Features**
+        - Uses a `MagicMock` to simulate a return value of `None` from the `compute_homography` function. 
+        - The output image should remain unchanged.
+4. `test_add_mustache`
+    - **Description**
+        - Verifies if the `add_mustache` function applies a mustache overlay properly given proper inputs.
+    - **Key Features**
+        - The resulting image should differ from the original image, indicating that the mustache has been applied.
