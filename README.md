@@ -48,7 +48,7 @@ python main.py
 ## Code Overview
 
 ### Facial Accessories
-`facial_accessories.py` contains the FacialAccessories class, which manages the application of facial accessories.
+`facial_accessories.py` contains the `FacialAccessories` class, which manages the application of facial accessories.
 
 #### Key Functions: 
 1. `alpha_blend`
