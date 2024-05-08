@@ -3,7 +3,12 @@ import numpy as np
 
 
 def estimate_pose(frame, detector, predictor, camera_matrix, dist_coeffs):
-    grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    """Estimate the pose of a face in a video frame"""
+    if len(frame.shape) == 3 and frame.shape[2] == 3:
+        grayscale = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    else:
+        grayscale = frame
+
     faces = detector(grayscale)
     for face in faces:
         landmarks = predictor(grayscale, face)
@@ -15,6 +20,7 @@ def estimate_pose(frame, detector, predictor, camera_matrix, dist_coeffs):
                 (225.0, 170.0, -135.0),  # Right eye right corner
                 (-150.0, -150.0, -125.0),  # Left Mouth corner
                 (150.0, -150.0, -125.0),  # Right mouth corner
+                (0.0, -150.0, -125.0),  # Nose Bridge
             ],
             dtype="double",
         )
@@ -27,6 +33,7 @@ def estimate_pose(frame, detector, predictor, camera_matrix, dist_coeffs):
                 (landmarks.part(45).x, landmarks.part(45).y),  # Right eye right corner
                 (landmarks.part(48).x, landmarks.part(48).y),  # Left Mouth corner
                 (landmarks.part(54).x, landmarks.part(54).y),  # Right mouth corner
+                (landmarks.part(28).x, landmarks.part(28).y),  # Nose bridge
             ],
             dtype="double",
         )
@@ -40,4 +47,5 @@ def estimate_pose(frame, detector, predictor, camera_matrix, dist_coeffs):
         )
 
         return success, rotation_vector, translation_vector, landmarks
+
     return None, None, None, None
