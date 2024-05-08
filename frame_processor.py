@@ -19,6 +19,9 @@ class FrameProcessor:
         self.prev_gray = None
         self.prev_points = None
         self.last_good_landmarks = None
+        self.persisted_detection_features = []
+        self.missing_detections = 0
+        self.failed_detection_frames = 10
         self.lk_params = {
             "winSize": (15, 15),
             "maxLevel": 2,
@@ -40,12 +43,22 @@ class FrameProcessor:
         if detected_landmarks:
             landmarks = detected_landmarks
             success = True
+            self.missing_detections = 0
+        else:
+            success = False
+            self.missing_detections += 1
+
+        if (
+            self.missing_detections <= self.failed_detection_frames
+            and self.last_good_landmarks is not None
+        ):
+            landmarks = self.last_good_landmarks
 
         landmarks = self.handle_last_good_detection(landmarks, success)
 
         if landmarks and rotation_vector is not None and translation_vector is not None:
             frame = self.apply_overlays(
-                frame, landmarks, flags, rotation_vector, translation_vector
+                frame, flags, rotation_vector, translation_vector
             )
 
         self.prev_gray = frame_gray.copy()
@@ -73,21 +86,6 @@ class FrameProcessor:
             self.get_camera_matrix(frame_gray.shape),
             np.zeros((4, 1)),
         )
-
-    def handle_last_good_detection(self, landmarks, success):
-        """Handle cases where detection fails using the last known good detection"""
-        if success:
-            self.last_good_landmarks = landmarks
-            self.frame_history.clear()
-        elif self.last_good_landmarks:
-            landmarks = self.last_good_landmarks
-            self.frame_history.append(landmarks)
-            if len(self.frame_history) > 10:
-                averaged_landmarks = self.average_landmarks()
-                if averaged_landmarks:
-                    return averaged_landmarks
-
-        return landmarks
 
     def average_landmarks(self):
         """Average out the landmarks over the last few frames to smooth transitions"""
@@ -136,6 +134,22 @@ class FrameProcessor:
                 return self.convert_points_to_landmarks(self.prev_points)
         return None
 
+    def handle_last_good_detection(self, landmarks, success):
+        """Handle cases where detection fails using the last known good detection"""
+        if success:
+            self.last_good_landmarks = landmarks
+            self.frame_history.clear()
+            self.persisted_detection_features.clear()
+        elif self.last_good_landmarks:
+            if len(self.persisted_detection_features) < self.failed_detection_frames:
+                self.persisted_detection_features.append(landmarks)
+                return landmarks
+            else:
+                persisted_landmarks = self.persisted_detection_features.pop(0)
+                return persisted_landmarks
+
+        return landmarks
+
     def convert_points_to_landmarks(self, points):
         """Convert points to dlib full object detection format"""
         if points is None or points.size == 0:
@@ -151,16 +165,13 @@ class FrameProcessor:
         dlib_points = [dlib.point(int(p[0]), int(p[1])) for p in points]
         return dlib.full_object_detection(rect, dlib_points)
 
-    def apply_overlays(
-        self, frame, landmarks, flags, rotation_vector, translation_vector
-    ):
+    def apply_overlays(self, frame, flags, rotation_vector, translation_vector):
         """Apply overlays to the frame based on the given landmarks and flags"""
         camera_matrix = self.get_camera_matrix(frame.shape)
         dist_coeffs = np.zeros((4, 1))
         if flags.get("sunglasses"):
             frame = self.facial_accessories.add_sunglasses(
                 frame,
-                landmarks,
                 self.sunglasses,
                 camera_matrix,
                 dist_coeffs,
@@ -171,7 +182,6 @@ class FrameProcessor:
             frame = self.facial_accessories.add_mustache(
                 frame,
                 self.mustache,
-                landmarks,
                 camera_matrix,
                 dist_coeffs,
                 rotation_vector,

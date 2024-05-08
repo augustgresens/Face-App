@@ -43,7 +43,6 @@ class FacialAccessories:
         self,
         frame,
         mustache,
-        landmarks,
         camera_matrix,
         dist_coeffs,
         rotation_vector,
@@ -112,7 +111,6 @@ class FacialAccessories:
     def add_sunglasses(
         self,
         frame,
-        landmarks,
         sunglasses,
         camera_matrix,
         dist_coeffs,
@@ -135,11 +133,6 @@ class FacialAccessories:
             fy=scale_factor,
             interpolation=cv2.INTER_LINEAR,
         )
-
-        # point_20 = landmarks.part(20)
-        # point_25 = landmarks.part(25)
-        # midpoint_y = (point_20.y + point_25.y) // 2
-        # vertical_offset += midpoint_y - resized_sunglasses.shape[0] // 2
 
         sunglasses_width = resized_sunglasses.shape[1]
         sunglasses_height = resized_sunglasses.shape[0]

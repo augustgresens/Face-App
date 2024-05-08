@@ -104,6 +104,7 @@ python main.py
     - **Key Features**
         - `cv2.cvtColor`: Converts the frame to grayscale.
         - `cv2.calcOpticalFlowPyrLK`: Compares feature points between two consecutive frames and computes their motion, and uses the Lucas-Kanade method for better precision in tracking movements. 
+        - Updates current landmarks with newly detected landmarks, and if there is no detection, reverts to last good detection using `handle_last_good_detection`.
         - Uses NumPy arrays for matrix and vector operations.
 
 2. `preprocess_frame`
@@ -123,8 +124,8 @@ python main.py
     - **Description** 
         - Handles cases where detection fails using the last known good detection.
     - **Key Features**
-        - Utilizes the last known successful detection in the event that the current detection fails.  It stores the last 10 detections into a deque to average out fluctuations and provide a more stable output. 
-        - `cv2.calcOpticalFlowPyrLK`: Tracks feature points using optical flow. 
+        - Persists the current detection for 10 frames in the case where the current detection fails.
+        - Clears the frame history when a successful detection occurs.
 5. `apply_overlays`
     - **Description**
         -  Applies overlays to the frame.
